@@ -69,6 +69,15 @@ app.use((req, res, next) => {
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
+    const origExit = process.exit;
+    process.exit = function (code?: number) {
+      if (code === 1) {
+        console.warn("Suppressed process.exit(1) from Vite error logger");
+        return undefined as never;
+      }
+      return origExit(code);
+    } as typeof process.exit;
+
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
   }
@@ -82,7 +91,6 @@ app.use((req, res, next) => {
     {
       port,
       host: "0.0.0.0",
-      reusePort: true,
     },
     () => {
       log(`serving on port ${port}`);

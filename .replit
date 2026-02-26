@@ -38,5 +38,5 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "SKIP_VITE=1 npm run dev"
+args = "NODE_ENV=production node dist/index.cjs"
 waitForPort = 5000

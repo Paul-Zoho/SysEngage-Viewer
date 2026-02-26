@@ -17,6 +17,8 @@ SysEngage is a Systems Engineering tool that implements the Canonical Ledger Spe
 - **Server**: Express.js
 - **Storage**: In-memory (MemStorage) with seed data representing a sample canonical ledger
 - **API**: RESTful endpoints under `/api/ledger/*`
+- **Running**: Production build via `NODE_ENV=production node dist/index.cjs` for stability; run `npm run build` after code changes
+- **Note**: The `process.exit(1)` in `server/vite.ts` is suppressed by an override in `server/index.ts` to prevent Vite errors from crashing the server in development mode
 
 ### Key Files
 - `shared/schema.ts` - TypeScript interfaces for all ledger element types
