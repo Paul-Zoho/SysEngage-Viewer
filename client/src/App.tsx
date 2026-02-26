@@ -3,25 +3,77 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
 import NotFound from "@/pages/not-found";
+import Dashboard from "@/pages/dashboard";
+import Sources from "@/pages/sources";
+import Requirements from "@/pages/requirements";
+import Findings from "@/pages/findings";
+import Gaps from "@/pages/gaps";
+import Risks from "@/pages/risks";
+import Issues from "@/pages/issues";
+import Traces from "@/pages/traces";
+import Decisions from "@/pages/decisions";
+import Domains from "@/pages/domains";
+import Coverage from "@/pages/coverage";
+import Stakeholders from "@/pages/stakeholders";
+import Explorer from "@/pages/explorer";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 function Router() {
   return (
     <Switch>
-      {/* Add pages below */}
-      {/* <Route path="/" component={Home}/> */}
-      {/* Fallback to 404 */}
+      <Route path="/" component={Dashboard} />
+      <Route path="/sources" component={Sources} />
+      <Route path="/requirements" component={Requirements} />
+      <Route path="/findings" component={Findings} />
+      <Route path="/gaps" component={Gaps} />
+      <Route path="/risks" component={Risks} />
+      <Route path="/issues" component={Issues} />
+      <Route path="/traces" component={Traces} />
+      <Route path="/decisions" component={Decisions} />
+      <Route path="/domains" component={Domains} />
+      <Route path="/coverage" component={Coverage} />
+      <Route path="/stakeholders" component={Stakeholders} />
+      <Route path="/explorer" component={Explorer} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
 function App() {
+  const style = {
+    "--sidebar-width": "16rem",
+    "--sidebar-width-icon": "3rem",
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <SidebarProvider style={style as React.CSSProperties}>
+          <div className="flex h-screen w-full">
+            <AppSidebar />
+            <div className="flex flex-col flex-1 min-w-0">
+              <header className="flex items-center justify-between gap-1 p-2 border-b h-12 shrink-0">
+                <div className="flex items-center gap-2">
+                  <SidebarTrigger data-testid="button-sidebar-toggle" />
+                  <span className="text-xs text-muted-foreground font-mono">SysEngage POC 5</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono bg-muted px-2 py-1 rounded-md">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[hsl(122,43%,45%)]" />
+                    Canonical Ledger v1.0
+                  </div>
+                </div>
+              </header>
+              <ScrollArea className="flex-1">
+                <Router />
+              </ScrollArea>
+            </div>
+          </div>
+        </SidebarProvider>
         <Toaster />
-        <Router />
       </TooltipProvider>
     </QueryClientProvider>
   );
