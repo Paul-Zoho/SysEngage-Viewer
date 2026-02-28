@@ -18,10 +18,15 @@ import { insertProjectSchema, type InsertProject, type ProjectSummary } from "@s
 import { Plus, Upload, Trash2, CheckCircle, FolderOpen, FolderKanban, Loader2, Calendar, Hash, AlertTriangle } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+interface ParseWarning {
+  section: string;
+  message: string;
+}
+
 interface UploadResult {
   projectName: string;
   elementCount: number;
-  warnings?: string[];
+  warnings?: ParseWarning[];
 }
 
 export default function Projects() {
@@ -219,7 +224,7 @@ export default function Projects() {
                   <div className="space-y-1">
                     {uploadResult.warnings.map((w, i) => (
                       <p key={i} className="text-xs text-muted-foreground bg-muted rounded-md px-2 py-1" data-testid={`text-warning-${i}`}>
-                        {w}
+                        [{w.section}] {w.message}
                       </p>
                     ))}
                   </div>
