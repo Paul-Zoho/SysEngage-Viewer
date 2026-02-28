@@ -26,16 +26,27 @@ import {
   Users,
   Layers,
   Database,
+  FolderOpen,
+  ChevronsUpDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
-import type { LedgerStats } from "@shared/schema";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import type { LedgerStats, ProjectSummary } from "@shared/schema";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 const navGroups = [
   {
     label: "Overview",
     items: [
       { title: "Dashboard", url: "/", icon: LayoutDashboard },
+      { title: "Projects", url: "/projects", icon: FolderOpen },
       { title: "Ledger Explorer", url: "/explorer", icon: Database },
     ],
   },
@@ -88,10 +99,23 @@ const countKeys: Record<string, keyof LedgerStats> = {
 export function AppSidebar() {
   const [location] = useLocation();
   const { data: stats } = useQuery<LedgerStats>({ queryKey: ["/api/ledger/stats"] });
+  const { data: projects } = useQuery<ProjectSummary[]>({ queryKey: ["/api/projects"] });
+  const { data: activeData } = useQuery<{ projectId: string }>({ queryKey: ["/api/projects/active"] });
+
+  const activeProject = projects?.find((p) => p.id === activeData?.projectId);
+
+  const switchMutation = useMutation({
+    mutationFn: async (projectId: string) => {
+      await apiRequest("PUT", "/api/projects/active", { projectId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries();
+    },
+  });
 
   return (
     <Sidebar>
-      <SidebarHeader className="p-4 border-b border-sidebar-border">
+      <SidebarHeader className="p-4 border-b border-sidebar-border space-y-3">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
             <BookOpen className="w-4 h-4 text-primary-foreground" />
@@ -101,6 +125,30 @@ export function AppSidebar() {
             <p className="text-[10px] text-muted-foreground font-mono">POC 5 / v1.0</p>
           </div>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-full justify-between" data-testid="button-project-selector">
+              <span className="truncate text-xs">
+                {activeProject ? activeProject.name : "Select Project"}
+              </span>
+              <ChevronsUpDown className="w-3.5 h-3.5 shrink-0 opacity-50" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-[--radix-dropdown-menu-trigger-width]">
+            {projects?.map((project) => (
+              <DropdownMenuItem
+                key={project.id}
+                onClick={() => switchMutation.mutate(project.id)}
+                data-testid={`menu-project-${project.id}`}
+              >
+                <span className="flex-1 truncate">{project.name}</span>
+                {project.id === activeData?.projectId && (
+                  <Badge variant="secondary" className="text-[10px] ml-2">Active</Badge>
+                )}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarHeader>
       <SidebarContent>
         {navGroups.map((group) => (

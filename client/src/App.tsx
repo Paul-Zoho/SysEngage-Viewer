@@ -19,6 +19,7 @@ import Domains from "@/pages/domains";
 import Coverage from "@/pages/coverage";
 import Stakeholders from "@/pages/stakeholders";
 import Explorer from "@/pages/explorer";
+import Projects from "@/pages/projects";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 function Router() {
@@ -37,6 +38,7 @@ function Router() {
       <Route path="/coverage" component={Coverage} />
       <Route path="/stakeholders" component={Stakeholders} />
       <Route path="/explorer" component={Explorer} />
+      <Route path="/projects" component={Projects} />
       <Route component={NotFound} />
     </Switch>
   );

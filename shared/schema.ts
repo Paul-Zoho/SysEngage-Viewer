@@ -521,3 +521,27 @@ export type ElementType =
   | "ZachmanCell" | "AnalysisPass" | "Register" | "Segment" | "SourceAtom"
   | "CellContentItem" | "CellRelationship" | "Checklist" | "StructuralRepresentation"
   | "ControlArtefact" | "Signal" | "Concern" | "ClosureMatrix" | "Baseline" | "ChangeRecord";
+
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  created_utc: string;
+  ledger: CanonicalLedger | null;
+}
+
+export const insertProjectSchema = z.object({
+  name: z.string().min(1, "Project name is required").max(200),
+  description: z.string().max(1000).optional(),
+});
+
+export type InsertProject = z.infer<typeof insertProjectSchema>;
+
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  description?: string;
+  created_utc: string;
+  elementCount: number;
+  hasLedger: boolean;
+}

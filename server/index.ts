@@ -14,12 +14,14 @@ declare module "http" {
 
 app.use(
   express.json({
+    limit: "50mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
   }),
 );
 
+app.use(express.text({ limit: "50mb", type: ["text/plain", "text/markdown"] }));
 app.use(express.urlencoded({ extended: false }));
 
 export function log(message: string, source = "express") {
