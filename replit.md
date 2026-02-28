@@ -15,7 +15,8 @@ SysEngage is a Systems Engineering tool that implements the Canonical Ledger Spe
 
 ### Backend
 - **Server**: Express.js
-- **Storage**: In-memory (MemStorage) with multi-project support (Map<string, Project>)
+- **Storage**: PostgreSQL via Drizzle ORM (DatabaseStorage) with multi-project support
+- **Database**: PostgreSQL with `projects` table (id, project_id, name, description, created_utc, ledger JSONB, is_active)
 - **API**: RESTful endpoints under `/api/ledger/*` (active project scoped) and `/api/projects/*`
 - **Ledger Parser**: `server/ledgerParser.ts` — parses markdown ledger files with embedded YAML blocks into CanonicalLedger objects
 - **Running**: Production build via `NODE_ENV=production node dist/index.cjs` for stability; run `npm run build` after code changes
@@ -25,7 +26,8 @@ SysEngage is a Systems Engineering tool that implements the Canonical Ledger Spe
 - `shared/schema.ts` - TypeScript interfaces for all ledger element types + Project/ProjectSummary types
 - `server/ledgerParser.ts` - Markdown-to-CanonicalLedger parser (handles ## sections, ### elements, yaml blocks)
 - `server/seedData.ts` - Realistic seed data for a defense/avionics system engineering ledger
-- `server/storage.ts` - Storage interface and multi-project in-memory implementation
+- `server/storage.ts` - Storage interface and DatabaseStorage (PostgreSQL) implementation
+- `server/db.ts` - Drizzle ORM database connection (node-postgres Pool)
 - `server/routes.ts` - API routes for ledger data and project management
 - `client/src/App.tsx` - Root component with sidebar layout and routing
 - `client/src/components/app-sidebar.tsx` - Navigation sidebar with project selector dropdown

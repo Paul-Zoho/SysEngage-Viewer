@@ -8,91 +8,91 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  app.get("/api/ledger", (_req, res) => {
-    res.json(storage.getLedger());
+  app.get("/api/ledger", async (_req, res) => {
+    res.json(await storage.getLedger());
   });
 
-  app.get("/api/ledger/stats", (_req, res) => {
-    res.json(storage.getLedgerStats());
+  app.get("/api/ledger/stats", async (_req, res) => {
+    res.json(await storage.getLedgerStats());
   });
 
-  app.get("/api/ledger/sources", (_req, res) => {
-    const ledger = storage.getLedger();
+  app.get("/api/ledger/sources", async (_req, res) => {
+    const ledger = await storage.getLedger();
     res.json(ledger?.sources ?? []);
   });
 
-  app.get("/api/ledger/requirements", (_req, res) => {
-    const ledger = storage.getLedger();
+  app.get("/api/ledger/requirements", async (_req, res) => {
+    const ledger = await storage.getLedger();
     res.json(ledger?.requirements ?? []);
   });
 
-  app.get("/api/ledger/findings", (_req, res) => {
-    const ledger = storage.getLedger();
+  app.get("/api/ledger/findings", async (_req, res) => {
+    const ledger = await storage.getLedger();
     res.json(ledger?.findings ?? []);
   });
 
-  app.get("/api/ledger/gaps", (_req, res) => {
-    const ledger = storage.getLedger();
+  app.get("/api/ledger/gaps", async (_req, res) => {
+    const ledger = await storage.getLedger();
     res.json(ledger?.gaps ?? []);
   });
 
-  app.get("/api/ledger/risks", (_req, res) => {
-    const ledger = storage.getLedger();
+  app.get("/api/ledger/risks", async (_req, res) => {
+    const ledger = await storage.getLedger();
     res.json(ledger?.risks ?? []);
   });
 
-  app.get("/api/ledger/issues", (_req, res) => {
-    const ledger = storage.getLedger();
+  app.get("/api/ledger/issues", async (_req, res) => {
+    const ledger = await storage.getLedger();
     res.json(ledger?.issues ?? []);
   });
 
-  app.get("/api/ledger/traces", (_req, res) => {
-    const ledger = storage.getLedger();
+  app.get("/api/ledger/traces", async (_req, res) => {
+    const ledger = await storage.getLedger();
     res.json(ledger?.traces ?? []);
   });
 
-  app.get("/api/ledger/decisions", (_req, res) => {
-    const ledger = storage.getLedger();
+  app.get("/api/ledger/decisions", async (_req, res) => {
+    const ledger = await storage.getLedger();
     res.json(ledger?.decisions ?? []);
   });
 
-  app.get("/api/ledger/domains", (_req, res) => {
-    const ledger = storage.getLedger();
+  app.get("/api/ledger/domains", async (_req, res) => {
+    const ledger = await storage.getLedger();
     res.json(ledger?.domains ?? []);
   });
 
-  app.get("/api/ledger/coverage", (_req, res) => {
-    const ledger = storage.getLedger();
+  app.get("/api/ledger/coverage", async (_req, res) => {
+    const ledger = await storage.getLedger();
     res.json(ledger?.coverage_items ?? []);
   });
 
-  app.get("/api/ledger/rules", (_req, res) => {
-    const ledger = storage.getLedger();
+  app.get("/api/ledger/rules", async (_req, res) => {
+    const ledger = await storage.getLedger();
     res.json(ledger?.rules ?? []);
   });
 
-  app.get("/api/ledger/questions", (_req, res) => {
-    const ledger = storage.getLedger();
+  app.get("/api/ledger/questions", async (_req, res) => {
+    const ledger = await storage.getLedger();
     res.json(ledger?.questions ?? []);
   });
 
-  app.get("/api/ledger/assumptions", (_req, res) => {
-    const ledger = storage.getLedger();
+  app.get("/api/ledger/assumptions", async (_req, res) => {
+    const ledger = await storage.getLedger();
     res.json(ledger?.assumptions ?? []);
   });
 
-  app.get("/api/ledger/constraints", (_req, res) => {
-    const ledger = storage.getLedger();
+  app.get("/api/ledger/constraints", async (_req, res) => {
+    const ledger = await storage.getLedger();
     res.json(ledger?.constraints ?? []);
   });
 
-  app.get("/api/ledger/stakeholders", (_req, res) => {
-    const ledger = storage.getLedger();
+  app.get("/api/ledger/stakeholders", async (_req, res) => {
+    const ledger = await storage.getLedger();
     res.json(ledger?.stakeholders ?? []);
   });
 
-  app.get("/api/ledger/registers", (_req, res) => {
-    const ledger = storage.getLedger();
+  app.get("/api/ledger/registers", async (_req, res) => {
+    const ledger = await storage.getLedger();
     if (!ledger) return res.json([]);
     res.json([
       ledger.source_register,
@@ -119,49 +119,49 @@ export async function registerRoutes(
     ]);
   });
 
-  app.get("/api/projects", (_req, res) => {
-    res.json(storage.getProjects());
+  app.get("/api/projects", async (_req, res) => {
+    res.json(await storage.getProjects());
   });
 
-  app.get("/api/projects/active", (_req, res) => {
-    res.json({ projectId: storage.getActiveProjectId() });
+  app.get("/api/projects/active", async (_req, res) => {
+    res.json({ projectId: await storage.getActiveProjectId() });
   });
 
-  app.put("/api/projects/active", (req, res) => {
+  app.put("/api/projects/active", async (req, res) => {
     const { projectId } = req.body;
     if (!projectId || typeof projectId !== "string") {
       return res.status(400).json({ message: "projectId is required" });
     }
-    const success = storage.setActiveProjectId(projectId);
+    const success = await storage.setActiveProjectId(projectId);
     if (!success) {
       return res.status(404).json({ message: "Project not found" });
     }
     res.json({ projectId });
   });
 
-  app.post("/api/projects", (req, res) => {
+  app.post("/api/projects", async (req, res) => {
     const parsed = insertProjectSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ message: parsed.error.issues[0]?.message || "Invalid input" });
     }
-    const project = storage.createProject(parsed.data.name, parsed.data.description);
+    const project = await storage.createProject(parsed.data.name, parsed.data.description);
     res.status(201).json(project);
   });
 
-  app.delete("/api/projects/:id", (req, res) => {
-    const projects = storage.getProjects();
-    if (projects.length <= 1) {
+  app.delete("/api/projects/:id", async (req, res) => {
+    const projectsList = await storage.getProjects();
+    if (projectsList.length <= 1) {
       return res.status(400).json({ message: "Cannot delete the last project" });
     }
-    const success = storage.deleteProject(req.params.id);
+    const success = await storage.deleteProject(req.params.id);
     if (!success) {
       return res.status(404).json({ message: "Project not found" });
     }
     res.json({ success: true });
   });
 
-  app.post("/api/projects/:id/ledger", (req, res) => {
-    const project = storage.getProject(req.params.id);
+  app.post("/api/projects/:id/ledger", async (req, res) => {
+    const project = await storage.getProject(req.params.id);
     if (!project) {
       return res.status(404).json({ message: "Project not found" });
     }
@@ -181,7 +181,7 @@ export async function registerRoutes(
 
     try {
       const result = parseLedgerMarkdown(markdownContent);
-      storage.setProjectLedger(req.params.id, result.ledger);
+      await storage.setProjectLedger(req.params.id, result.ledger);
       res.json({
         success: true,
         elementCount: result.elementCount,
