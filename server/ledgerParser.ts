@@ -47,6 +47,46 @@ const REGISTER_TYPE_TO_FIELD: Record<string, string> = {
   ClosureMatrix: "closure_matrix_register",
   Baseline: "baseline_register",
   ChangeRecord: "change_record_register",
+  AnalysisPass: "analysis_pass_register",
+};
+
+const REGISTER_HEADING_TO_TYPE: Record<string, string> = {
+  SourceRegister: "Source",
+  FindingRegister: "Finding",
+  FindingsRegister: "Finding",
+  GapRegister: "Gap",
+  ZachmanCellRegister: "ZachmanCell",
+  TraceRegister: "Trace",
+  DomainRegister: "Domain",
+  RequirementRegister: "Requirement",
+  RiskRegister: "Risk",
+  IssueRegister: "Issue",
+  QuestionRegister: "Question",
+  AnswerRegister: "Answer",
+  AssumptionRegister: "Assumption",
+  ConstraintRegister: "Constraint",
+  CandidateRequirementRegister: "CandidateRequirement",
+  SuggestionRegister: "Suggestion",
+  DecisionRegister: "Decision",
+  CoverageItemRegister: "CoverageItem",
+  CoverageRegister: "CoverageItem",
+  EvaluationRegister: "Evaluation",
+  ViolationRegister: "Violation",
+  StakeholderRegister: "Stakeholder",
+  NarrativeSummaryRegister: "NarrativeSummary",
+  SegmentRegister: "Segment",
+  SourceAtomRegister: "SourceAtom",
+  CellContentItemRegister: "CellContentItem",
+  CellRelationshipRegister: "CellRelationship",
+  ChecklistRegister: "Checklist",
+  StructuralRepresentationRegister: "StructuralRepresentation",
+  ControlArtefactRegister: "ControlArtefact",
+  SignalRegister: "Signal",
+  ConcernRegister: "Concern",
+  ClosureMatrixRegister: "ClosureMatrix",
+  BaselineRegister: "Baseline",
+  ChangeRecordRegister: "ChangeRecord",
+  AnalysisPassRegister: "AnalysisPass",
 };
 
 const SECTION_TO_FIELD: Record<string, string> = {
@@ -207,6 +247,15 @@ interface Element {
   yamlContent: string;
 }
 
+function isRealH3Heading(line: string): boolean {
+  if (!line.startsWith("### ")) return false;
+  if (line.startsWith("#### ")) return false;
+  const rest = line.slice(4).trim();
+  if (rest.startsWith("**") && !rest.endsWith("Register")) return false;
+  if (rest.startsWith("#")) return false;
+  return true;
+}
+
 function splitElements(sectionContent: string): Element[] {
   const elements: Element[] = [];
   const lines = sectionContent.split("\n");
@@ -214,7 +263,7 @@ function splitElements(sectionContent: string): Element[] {
   let currentLines: string[] = [];
 
   for (const line of lines) {
-    if (line.startsWith("### ")) {
+    if (isRealH3Heading(line)) {
       if (currentHeading) {
         elements.push({ heading: currentHeading, yamlContent: currentLines.join("\n") });
       }
@@ -227,6 +276,46 @@ function splitElements(sectionContent: string): Element[] {
 
   if (currentHeading) {
     elements.push({ heading: currentHeading, yamlContent: currentLines.join("\n") });
+  }
+
+  return elements;
+}
+
+interface SubElement {
+  heading: string;
+  content: string;
+}
+
+function isRealH4Heading(line: string): boolean {
+  if (!line.startsWith("#### ")) return false;
+  const rest = line.slice(5).trim();
+  if (rest.startsWith("**")) return false;
+  if (rest.startsWith("#")) return false;
+  if (/^\d+[\.\)]/.test(rest)) return false;
+  if (rest.length === 0) return false;
+  return /^[A-Za-z]/.test(rest);
+}
+
+function splitSubElements(content: string): SubElement[] {
+  const elements: SubElement[] = [];
+  const lines = content.split("\n");
+  let currentHeading = "";
+  let currentLines: string[] = [];
+
+  for (const line of lines) {
+    if (isRealH4Heading(line)) {
+      if (currentHeading) {
+        elements.push({ heading: currentHeading, content: currentLines.join("\n") });
+      }
+      currentHeading = line.slice(5).trim();
+      currentLines = [];
+    } else {
+      currentLines.push(line);
+    }
+  }
+
+  if (currentHeading) {
+    elements.push({ heading: currentHeading, content: currentLines.join("\n") });
   }
 
   return elements;
@@ -245,6 +334,105 @@ function extractAllYamlBlocks(text: string): string[] {
     blocks.push(match[1]);
   }
   return blocks;
+}
+
+function coerceValue(value: string): string | number | boolean {
+  if (value === "true" || value === "True") return true;
+  if (value === "false" || value === "False") return false;
+  if (value === "None" || value === "null" || value === "none") return "";
+  const num = Number(value);
+  if (!isNaN(num) && value.trim() !== "") return num;
+  return value;
+}
+
+function extractMarkdownData(text: string): Record<string, unknown> | null {
+  const lines = text.split("\n");
+  const result: Record<string, unknown> = {};
+  let currentKey: string | null = null;
+  let currentList: unknown[] | null = null;
+  let isNestedObject = false;
+  let nestedObject: Record<string, unknown> = {};
+
+  for (const line of lines) {
+    const topMatch = line.match(/^- \*\*(\w[\w_-]*)\*\*:\s*(.*)/);
+    if (topMatch) {
+      if (currentKey && currentList !== null) {
+        if (isNestedObject && Object.keys(nestedObject).length > 0) {
+          result[currentKey] = nestedObject;
+        } else {
+          result[currentKey] = currentList;
+        }
+      }
+
+      const key = topMatch[1];
+      const value = topMatch[2].trim();
+
+      if (value === "" || value === "None" || value === "none" || value === "null") {
+        currentKey = key;
+        currentList = [];
+        isNestedObject = false;
+        nestedObject = {};
+      } else {
+        result[key] = coerceValue(value);
+        currentKey = null;
+        currentList = null;
+        isNestedObject = false;
+        nestedObject = {};
+      }
+      continue;
+    }
+
+    const subKvMatch = line.match(/^\s{2,}- \*\*(\w[\w_-]*)\*\*:\s*(.*)/);
+    if (subKvMatch && currentKey) {
+      isNestedObject = true;
+      nestedObject[subKvMatch[1]] = coerceValue(subKvMatch[2].trim());
+      continue;
+    }
+
+    const subItemMatch = line.match(/^\s{2,}- (.+)/);
+    if (subItemMatch && currentKey) {
+      if (!isNestedObject) {
+        if (!currentList) currentList = [];
+        currentList.push(coerceValue(subItemMatch[1].trim()));
+      }
+      continue;
+    }
+  }
+
+  if (currentKey && currentList !== null) {
+    if (isNestedObject && Object.keys(nestedObject).length > 0) {
+      result[currentKey] = nestedObject;
+    } else {
+      result[currentKey] = currentList;
+    }
+  }
+
+  if (Object.keys(result).length === 0) return null;
+  return result;
+}
+
+function extractData(text: string): Record<string, unknown> | null {
+  const yamlStr = extractYaml(text);
+  if (yamlStr) {
+    const data = safeYamlLoad(yamlStr);
+    if (data && typeof data === "object") return data as Record<string, unknown>;
+  }
+  return extractMarkdownData(text);
+}
+
+function extractAllData(text: string): Record<string, unknown>[] {
+  const yamlBlocks = extractAllYamlBlocks(text);
+  if (yamlBlocks.length > 0) {
+    const results: Record<string, unknown>[] = [];
+    for (const block of yamlBlocks) {
+      const data = safeYamlLoad(block);
+      if (data && typeof data === "object") results.push(data as Record<string, unknown>);
+    }
+    return results;
+  }
+  const md = extractMarkdownData(text);
+  if (md) return [md];
+  return [];
 }
 
 function sanitizeYaml(yamlStr: string): string {
@@ -311,6 +499,78 @@ function safeYamlLoad(yamlStr: string): unknown {
   }
 }
 
+function processRegisterData(data: Record<string, unknown>, headingHint: string): { registerType: string; register: Register } | null {
+  let registerType = data.register_type ? String(data.register_type) : "";
+  if (!registerType && headingHint) {
+    registerType = REGISTER_HEADING_TO_TYPE[headingHint] || "";
+  }
+  if (!registerType) return null;
+
+  const fieldName = REGISTER_TYPE_TO_FIELD[registerType];
+  if (!fieldName) return null;
+
+  const register: Register = {
+    register_id: String(data.register_id || ""),
+    register_type: registerType,
+    member_ids: Array.isArray(data.member_ids)
+      ? data.member_ids.map(String)
+      : [],
+    completeness_rule: String(data.completeness_rule || ""),
+    confidence: typeof data.confidence === "number" ? data.confidence : undefined,
+  };
+
+  return { registerType, register };
+}
+
+function parseElementsSection(
+  content: string,
+  warnings: ParseWarning[],
+  ledger: CanonicalLedger
+): number {
+  let elementCount = 0;
+  const subsections = splitElements(content);
+
+  for (const subsection of subsections) {
+    const fieldName = SECTION_TO_FIELD[subsection.heading];
+    if (!fieldName) {
+      warnings.push({
+        section: "Elements",
+        element: subsection.heading,
+        message: "Unknown element category, skipped",
+      });
+      continue;
+    }
+
+    const subElements = splitSubElements(subsection.yamlContent);
+    const parsedElements: unknown[] = [];
+
+    for (const el of subElements) {
+      const dataList = extractAllData(el.content);
+      if (dataList.length === 0) {
+        warnings.push({
+          section: subsection.heading,
+          element: el.heading,
+          message: "No data found",
+        });
+        continue;
+      }
+      for (const data of dataList) {
+        parsedElements.push(data);
+        elementCount++;
+      }
+    }
+
+    const existing = (ledger as unknown as Record<string, unknown>)[fieldName];
+    if (Array.isArray(existing) && existing.length > 0) {
+      (ledger as unknown as Record<string, unknown>)[fieldName] = [...existing, ...parsedElements];
+    } else {
+      (ledger as unknown as Record<string, unknown>)[fieldName] = parsedElements;
+    }
+  }
+
+  return elementCount;
+}
+
 export function parseLedgerMarkdown(markdown: string): ParseResult {
   const warnings: ParseWarning[] = [];
   const ledger = createEmptyLedger();
@@ -319,26 +579,18 @@ export function parseLedgerMarkdown(markdown: string): ParseResult {
   const sections = splitSections(markdown);
 
   for (const section of sections) {
-    if (section.name === "Run Metadata") {
+    if (section.name === "Run Metadata" || section.name === "Run Configuration" || section.name === "Inputs") {
       continue;
     }
 
     if (section.name === "CanonicalLedger") {
-      const yamlStr = extractYaml(section.content);
-      if (yamlStr) {
-        const data = safeYamlLoad(yamlStr) as Record<string, unknown> | null;
-        if (data) {
-          ledger.ledger_id = String(data.ledger_id || "");
-          ledger.version = String(data.version || data.ledger_spec_version || "");
-          const rawDate = data.created_date || data.created_utc || "";
-          ledger.created_utc = rawDate instanceof Date ? rawDate.toISOString() : String(rawDate);
-          ledger.row_target = data.row_target ? String(data.row_target) : undefined;
-        } else {
-          warnings.push({
-            section: "CanonicalLedger",
-            message: "Failed to parse YAML metadata",
-          });
-        }
+      const data = extractData(section.content);
+      if (data) {
+        ledger.ledger_id = String(data.ledger_id || "");
+        ledger.version = String(data.version || data.ledger_spec_version || "");
+        const rawDate = data.created_date || data.created_utc || "";
+        ledger.created_utc = rawDate instanceof Date ? rawDate.toISOString() : String(rawDate);
+        ledger.row_target = data.row_target ? String(data.row_target) : undefined;
       }
       continue;
     }
@@ -346,46 +598,33 @@ export function parseLedgerMarkdown(markdown: string): ParseResult {
     if (section.name === "Registers") {
       const elements = splitElements(section.content);
       for (const el of elements) {
-        const yamlStr = extractYaml(el.yamlContent);
-        if (!yamlStr) {
+        const data = extractData(el.yamlContent);
+        if (!data) {
           warnings.push({
             section: "Registers",
             element: el.heading,
-            message: "No YAML block found",
+            message: "No data found",
           });
           continue;
         }
-        const data = safeYamlLoad(yamlStr) as Record<string, unknown> | null;
-        if (data && data.register_type) {
-          const registerType = String(data.register_type);
-          const fieldName = REGISTER_TYPE_TO_FIELD[registerType];
-          if (fieldName) {
-            const register: Register = {
-              register_id: String(data.register_id || ""),
-              register_type: registerType,
-              member_ids: Array.isArray(data.member_ids)
-                ? data.member_ids.map(String)
-                : [],
-              completeness_rule: String(data.completeness_rule || ""),
-              confidence: typeof data.confidence === "number" ? data.confidence : undefined,
-            };
-            (ledger as unknown as Record<string, unknown>)[fieldName] = register;
-            elementCount++;
-          } else {
-            warnings.push({
-              section: "Registers",
-              element: el.heading,
-              message: `Unknown register type: ${registerType}`,
-            });
-          }
-        } else if (!data) {
+        const result = processRegisterData(data, el.heading);
+        if (result) {
+          const fieldName = REGISTER_TYPE_TO_FIELD[result.registerType];
+          (ledger as unknown as Record<string, unknown>)[fieldName] = result.register;
+          elementCount++;
+        } else {
           warnings.push({
             section: "Registers",
             element: el.heading,
-            message: "Failed to parse YAML",
+            message: `Unknown register type from heading: ${el.heading}`,
           });
         }
       }
+      continue;
+    }
+
+    if (section.name === "Elements") {
+      elementCount += parseElementsSection(section.content, warnings, ledger);
       continue;
     }
 
@@ -402,28 +641,30 @@ export function parseLedgerMarkdown(markdown: string): ParseResult {
     const parsedElements: unknown[] = [];
 
     for (const el of elements) {
-      const yamlBlocks = extractAllYamlBlocks(el.yamlContent);
-      if (yamlBlocks.length === 0) {
-        warnings.push({
-          section: section.name,
-          element: el.heading,
-          message: "No YAML block found",
-        });
-        continue;
-      }
-
-      for (const yamlStr of yamlBlocks) {
-        const data = safeYamlLoad(yamlStr);
-        if (data && typeof data === "object") {
-          parsedElements.push(data);
-          elementCount++;
-        } else if (!data) {
+      const dataList = extractAllData(el.yamlContent);
+      if (dataList.length === 0) {
+        const subElements = splitSubElements(el.yamlContent);
+        if (subElements.length > 0) {
+          for (const subEl of subElements) {
+            const subDataList = extractAllData(subEl.content);
+            for (const data of subDataList) {
+              parsedElements.push(data);
+              elementCount++;
+            }
+          }
+        } else {
           warnings.push({
             section: section.name,
             element: el.heading,
-            message: "Failed to parse YAML block",
+            message: "No data found",
           });
         }
+        continue;
+      }
+
+      for (const data of dataList) {
+        parsedElements.push(data);
+        elementCount++;
       }
     }
 
