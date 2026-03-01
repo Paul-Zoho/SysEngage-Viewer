@@ -82,15 +82,31 @@ Each element type has a corresponding Register that tracks all member IDs for co
 3. **Ledger Explorer** - Hierarchical register browser with metadata
 4. **Sources** - Source excerpts table with provenance data
 5. **Domains** - Domain classification cards
-6. **Traceability** - Trace relationships (ST/DT/GT/AT) table
-7. **Requirements** - Requirements with type, priority, verification
-8. **Coverage** - Coverage analysis with state distribution
-9. **Findings** - Analysis findings with severity and related items
-10. **Gaps** - Gap cards with impact, resolution state, affected cells
-11. **Risks** - Risk register with likelihood/impact/exposure matrix
-12. **Issues** - Issue tracking with severity and status
-13. **Decisions** - Architectural/governance decisions
-14. **Stakeholders** - Stakeholder profiles with domain associations
+6. **Traceability** - Trace relationships with flat/grouped views, type filtering, and search
+7. **Relationships** - Relationship matrix showing cross-type element connections with interactive filtering
+8. **Requirements** - Requirements with type, priority, verification
+9. **Coverage** - Coverage analysis with state distribution
+10. **Findings** - Analysis findings with severity and related items
+11. **Gaps** - Gap cards with impact, resolution state, affected cells
+12. **Risks** - Risk register with likelihood/impact/exposure matrix
+13. **Issues** - Issue tracking with severity and status
+14. **Decisions** - Architectural/governance decisions
+15. **Stakeholders** - Stakeholder profiles with domain associations
+
+### Relationship Visualization System
+Three interconnected features for exploring element relationships:
+
+1. **Relationship Matrix** (`/relationships`): Interactive matrix/grid showing edge counts between element type pairs. Click cells to filter the edge list. Summary stats cards, relationship type distribution, and searchable edge table.
+
+2. **Grouped Trace Tables** (`/traces`): Enhanced traceability page with flat/grouped view toggle. Grouped view organizes traces by from→to element type pairs in collapsible cards. Includes trace type filter (ST/DT/GT/AT) and text search.
+
+3. **Element Detail Panel**: Slide-over panel triggered by clicking any ElementId badge across the app. Shows element info, outgoing relationships, and incoming relationships grouped by type. Supports navigation between related elements within the panel.
+
+Key components:
+- `client/src/pages/relationships.tsx` - Relationship matrix page
+- `client/src/components/element-detail-panel.tsx` - Detail panel (Sheet)
+- `client/src/components/element-id.tsx` - Clickable ElementId with context-based detail panel integration
+- `GET /api/ledger/relationships` - Computes unified relationship graph from all element cross-references
 
 ### API Endpoints
 - `GET /api/projects` - List all projects with summary info
@@ -98,7 +114,8 @@ Each element type has a corresponding Register that tracks all member IDs for co
 - `DELETE /api/projects/:id` - Delete project
 - `GET /api/projects/active` - Get active project ID
 - `PUT /api/projects/active` - Set active project
-- `POST /api/projects/:id/ledger` - Upload markdown ledger file to project
+- `POST /api/projects/:id/ledger` - Upload ledger file (markdown or JSON) to project
 - `GET /api/ledger` - Full ledger for active project
 - `GET /api/ledger/stats` - Computed statistics for active project
+- `GET /api/ledger/relationships` - Unified relationship graph (nodes + edges) for active project
 - `GET /api/ledger/sources|requirements|...` - Individual collections

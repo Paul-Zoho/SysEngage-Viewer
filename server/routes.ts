@@ -91,6 +91,170 @@ export async function registerRoutes(
     res.json(ledger?.stakeholders ?? []);
   });
 
+  app.get("/api/ledger/relationships", async (_req, res) => {
+    const ledger = await storage.getLedger();
+    if (!ledger) return res.json({ nodes: [], edges: [] });
+
+    interface RelNode { id: string; type: string; title: string }
+    interface RelEdge { from: string; to: string; relationship: string; detail?: string }
+
+    const nodeMap = new Map<string, RelNode>();
+    const edges: RelEdge[] = [];
+
+    function addNode(id: string, type: string, title: string) {
+      if (id && !nodeMap.has(id)) nodeMap.set(id, { id, type, title });
+    }
+
+    function addEdge(from: string, to: string, relationship: string, detail?: string) {
+      if (from && to) edges.push({ from, to, relationship, detail });
+    }
+
+    ledger.sources.forEach(s => addNode(s.source_id || (s as any).id, "Source", (s as any).title || s.source_text?.slice(0, 60) || s.source_id));
+    ledger.findings.forEach(f => addNode(f.finding_id, "Finding", f.description?.slice(0, 60) || f.finding_id));
+    ledger.gaps.forEach(g => addNode(g.gap_id, "Gap", g.description?.slice(0, 60) || g.gap_id));
+    ledger.domains.forEach(d => addNode(d.domain_id, "Domain", d.name || d.domain_id));
+    ledger.requirements.forEach(r => addNode(r.requirement_id, "Requirement", (r as any).title || r.statement?.slice(0, 60) || r.requirement_id));
+    ledger.risks.forEach(r => addNode(r.risk_id, "Risk", r.title || r.risk_id));
+    ledger.issues.forEach(i => addNode(i.issue_id, "Issue", i.title || i.issue_id));
+    ledger.questions.forEach(q => addNode(q.question_id, "Question", q.question_text?.slice(0, 60) || q.question_id));
+    ledger.answers.forEach(a => addNode(a.answer_id, "Answer", a.response_text?.slice(0, 60) || a.answer_id));
+    ledger.assumptions.forEach(a => addNode(a.assumption_id, "Assumption", a.statement?.slice(0, 60) || a.assumption_id));
+    ledger.constraints.forEach(c => addNode(c.constraint_id, "Constraint", c.statement?.slice(0, 60) || c.constraint_id));
+    ledger.candidate_requirements.forEach(c => addNode(c.candidate_requirement_id, "CandidateRequirement", c.statement?.slice(0, 60) || c.candidate_requirement_id));
+    ledger.suggestions.forEach(s => addNode(s.suggestion_id, "Suggestion", s.description?.slice(0, 60) || s.suggestion_id));
+    ledger.decisions.forEach(d => addNode(d.decision_id, "Decision", d.title || d.decision_id));
+    ledger.traces.forEach(t => addNode(t.trace_id, "Trace", t.rationale?.slice(0, 60) || t.trace_id));
+    ledger.zachman_cells.forEach(z => addNode(z.cell_id, "ZachmanCell", `${z.row}/${z.column}` || z.cell_id));
+    ledger.coverage_items.forEach(c => addNode(c.coverage_id, "CoverageItem", c.coverage_type || c.coverage_id));
+    ledger.evaluations.forEach(e => addNode(e.evaluation_id, "Evaluation", e.scope_description?.slice(0, 60) || e.evaluation_id));
+    ledger.violations.forEach(v => addNode(v.violation_id, "Violation", v.description?.slice(0, 60) || v.violation_id));
+    ledger.stakeholders.forEach(s => addNode(s.stakeholder_id, "Stakeholder", s.name || s.stakeholder_id));
+    ledger.analysis_passes.forEach(a => addNode(a.pass_id, "AnalysisPass", a.pass_type || a.pass_id));
+    ledger.segments.forEach(s => addNode(s.segment_id, "Segment", s.segment_text?.slice(0, 60) || s.segment_id));
+    ledger.source_atoms.forEach(a => addNode(a.atom_id, "SourceAtom", a.atom_text?.slice(0, 60) || a.atom_id));
+    ledger.signals.forEach(s => addNode(s.signal_id, "Signal", s.description?.slice(0, 60) || s.signal_id));
+    ledger.concerns.forEach(c => addNode(c.concern_id, "Concern", c.description?.slice(0, 60) || c.concern_id));
+    ledger.baselines.forEach(b => addNode(b.baseline_id, "Baseline", b.name || b.baseline_id));
+    ledger.change_records.forEach(c => addNode(c.change_id, "ChangeRecord", c.description?.slice(0, 60) || c.change_id));
+
+    ledger.traces.forEach(t => {
+      const fromId = t.from_id || (t as any).from_ref || "";
+      const toId = t.to_id || (t as any).to_ref || "";
+      addEdge(fromId, toId, `trace:${t.trace_type}`, t.rationale || (t as any).description);
+    });
+
+    ledger.findings.forEach(f => {
+      (f.source_refs || []).forEach(ref => addEdge(f.finding_id, ref, "source_ref"));
+      if (f.produced_by_pass_id) addEdge(f.finding_id, f.produced_by_pass_id, "produced_by");
+      (f.related_items || []).forEach(ref => addEdge(f.finding_id, ref, "related"));
+    });
+
+    ledger.gaps.forEach(g => {
+      (g.domain_refs || []).forEach(ref => addEdge(g.gap_id, ref, "domain_ref"));
+      (g.produced_from_finding_ids || []).forEach(ref => addEdge(g.gap_id, ref, "produced_from"));
+      (g.affected_cells || []).forEach(ref => addEdge(g.gap_id, ref, "affects_cell"));
+    });
+
+    ledger.requirements.forEach(r => {
+      (r.source_refs || []).forEach(ref => addEdge(r.requirement_id, ref, "source_ref"));
+      (r.domain_refs || []).forEach(ref => addEdge(r.requirement_id, ref, "domain_ref"));
+    });
+
+    ledger.risks.forEach(r => {
+      (r.source_refs || []).forEach(ref => addEdge(r.risk_id, ref, "source_ref"));
+      (r.domain_refs || []).forEach(ref => addEdge(r.risk_id, ref, "domain_ref"));
+      (r.related_element_ids || []).forEach(ref => addEdge(r.risk_id, ref, "related"));
+    });
+
+    ledger.issues.forEach(i => {
+      (i.source_refs || []).forEach(ref => addEdge(i.issue_id, ref, "source_ref"));
+      (i.domain_refs || []).forEach(ref => addEdge(i.issue_id, ref, "domain_ref"));
+      (i.related_element_ids || []).forEach(ref => addEdge(i.issue_id, ref, "related"));
+    });
+
+    ledger.questions.forEach(q => {
+      (q.source_refs || []).forEach(ref => addEdge(q.question_id, ref, "source_ref"));
+    });
+
+    ledger.answers.forEach(a => {
+      if (a.question_id) addEdge(a.answer_id, a.question_id, "answers");
+      (a.source_refs || []).forEach(ref => addEdge(a.answer_id, ref, "source_ref"));
+    });
+
+    ledger.assumptions.forEach(a => {
+      (a.source_refs || []).forEach(ref => addEdge(a.assumption_id, ref, "source_ref"));
+      (a.related_element_ids || []).forEach(ref => addEdge(a.assumption_id, ref, "related"));
+    });
+
+    ledger.constraints.forEach(c => {
+      (c.source_refs || []).forEach(ref => addEdge(c.constraint_id, ref, "source_ref"));
+      (c.domain_refs || []).forEach(ref => addEdge(c.constraint_id, ref, "domain_ref"));
+      (c.affected_element_ids || []).forEach(ref => addEdge(c.constraint_id, ref, "affects"));
+    });
+
+    ledger.candidate_requirements.forEach(c => {
+      (c.source_refs || []).forEach(ref => addEdge(c.candidate_requirement_id, ref, "source_ref"));
+      (c.domain_refs || []).forEach(ref => addEdge(c.candidate_requirement_id, ref, "domain_ref"));
+    });
+
+    ledger.suggestions.forEach(s => {
+      (s.source_refs || []).forEach(ref => addEdge(s.suggestion_id, ref, "source_ref"));
+      (s.target_element_ids || []).forEach(ref => addEdge(s.suggestion_id, ref, "targets"));
+    });
+
+    ledger.decisions.forEach(d => {
+      (d.related_element_ids || []).forEach(ref => addEdge(d.decision_id, ref, "related"));
+    });
+
+    ledger.coverage_items.forEach(c => {
+      if (c.target_id) addEdge(c.coverage_id, c.target_id, "covers");
+      if (c.produced_by_pass_id) addEdge(c.coverage_id, c.produced_by_pass_id, "produced_by");
+    });
+
+    ledger.violations.forEach(v => {
+      (v.related_element_ids || []).forEach(ref => addEdge(v.violation_id, ref, "related"));
+      if (v.rule_id) addEdge(v.violation_id, v.rule_id, "violates");
+      if (v.produced_by_evaluation_id) addEdge(v.violation_id, v.produced_by_evaluation_id, "produced_by");
+    });
+
+    ledger.stakeholders.forEach(s => {
+      (s.domain_refs || []).forEach(ref => addEdge(s.stakeholder_id, ref, "domain_ref"));
+    });
+
+    ledger.segments.forEach(s => {
+      if (s.source_id) addEdge(s.segment_id, s.source_id, "segment_of");
+    });
+
+    ledger.source_atoms.forEach(a => {
+      if (a.segment_id) addEdge(a.atom_id, a.segment_id, "atom_of");
+    });
+
+    ledger.signals.forEach(s => {
+      if (s.source_element_id) addEdge(s.signal_id, s.source_element_id, "signal_from");
+      (s.target_element_ids || []).forEach(ref => addEdge(s.signal_id, ref, "signal_to"));
+    });
+
+    ledger.concerns.forEach(c => {
+      if (c.raised_by_stakeholder_id) addEdge(c.concern_id, c.raised_by_stakeholder_id, "raised_by");
+      (c.related_element_ids || []).forEach(ref => addEdge(c.concern_id, ref, "related"));
+    });
+
+    ledger.change_records.forEach(c => {
+      (c.affected_element_ids || []).forEach(ref => addEdge(c.change_id, ref, "affects"));
+    });
+
+    for (const edge of edges) {
+      if (!nodeMap.has(edge.from)) {
+        nodeMap.set(edge.from, { id: edge.from, type: "Unknown", title: edge.from });
+      }
+      if (!nodeMap.has(edge.to)) {
+        nodeMap.set(edge.to, { id: edge.to, type: "Unknown", title: edge.to });
+      }
+    }
+
+    res.json({ nodes: Array.from(nodeMap.values()), edges });
+  });
+
   app.get("/api/ledger/registers", async (_req, res) => {
     const ledger = await storage.getLedger();
     if (!ledger) return res.json([]);

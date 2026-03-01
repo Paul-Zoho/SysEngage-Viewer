@@ -20,7 +20,11 @@ import Coverage from "@/pages/coverage";
 import Stakeholders from "@/pages/stakeholders";
 import Explorer from "@/pages/explorer";
 import Projects from "@/pages/projects";
+import Relationships from "@/pages/relationships";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useState } from "react";
+import { ElementDetailPanel } from "@/components/element-detail-panel";
+import { ElementDetailContext } from "@/components/element-id";
 
 function Router() {
   return (
@@ -39,6 +43,7 @@ function Router() {
       <Route path="/stakeholders" component={Stakeholders} />
       <Route path="/explorer" component={Explorer} />
       <Route path="/projects" component={Projects} />
+      <Route path="/relationships" component={Relationships} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -50,31 +55,40 @@ function App() {
     "--sidebar-width-icon": "3rem",
   };
 
+  const [detailElementId, setDetailElementId] = useState<string | null>(null);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <SidebarProvider style={style as React.CSSProperties}>
-          <div className="flex h-screen w-full">
-            <AppSidebar />
-            <div className="flex flex-col flex-1 min-w-0">
-              <header className="flex items-center justify-between gap-1 p-2 border-b h-12 shrink-0">
-                <div className="flex items-center gap-2">
-                  <SidebarTrigger data-testid="button-sidebar-toggle" />
-                  <span className="text-xs text-muted-foreground font-mono">SysEngage POC 5</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono bg-muted px-2 py-1 rounded-md">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[hsl(122,43%,45%)]" />
-                    Canonical Ledger v1.0
+        <ElementDetailContext.Provider value={setDetailElementId}>
+          <SidebarProvider style={style as React.CSSProperties}>
+            <div className="flex h-screen w-full">
+              <AppSidebar />
+              <div className="flex flex-col flex-1 min-w-0">
+                <header className="flex items-center justify-between gap-1 p-2 border-b h-12 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <span className="text-xs text-muted-foreground font-mono">SysEngage POC 5</span>
                   </div>
-                </div>
-              </header>
-              <ScrollArea className="flex-1">
-                <Router />
-              </ScrollArea>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono bg-muted px-2 py-1 rounded-md">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[hsl(122,43%,45%)]" />
+                      Canonical Ledger v1.0
+                    </div>
+                  </div>
+                </header>
+                <ScrollArea className="flex-1">
+                  <Router />
+                </ScrollArea>
+              </div>
             </div>
-          </div>
-        </SidebarProvider>
+          </SidebarProvider>
+          <ElementDetailPanel
+            elementId={detailElementId}
+            open={detailElementId !== null}
+            onOpenChange={(open) => { if (!open) setDetailElementId(null); }}
+          />
+        </ElementDetailContext.Provider>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>

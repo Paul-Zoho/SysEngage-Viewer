@@ -28,6 +28,7 @@ import {
   Database,
   FolderOpen,
   ChevronsUpDown,
+  Network,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -56,6 +57,7 @@ const navGroups = [
       { title: "Sources", url: "/sources", icon: FileText },
       { title: "Domains", url: "/domains", icon: Layers },
       { title: "Traceability", url: "/traces", icon: GitBranch },
+      { title: "Relationships", url: "/relationships", icon: Network },
     ],
   },
   {
