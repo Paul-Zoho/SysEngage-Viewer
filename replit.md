@@ -18,7 +18,7 @@ SysEngage is a Systems Engineering tool that implements the Canonical Ledger Spe
 - **Storage**: PostgreSQL via Drizzle ORM (DatabaseStorage) with multi-project support
 - **Database**: PostgreSQL with `projects` table (id, project_id, name, description, created_utc, ledger JSONB, is_active)
 - **API**: RESTful endpoints under `/api/ledger/*` (active project scoped) and `/api/projects/*`
-- **Ledger Parser**: `server/ledgerParser.ts` — parses markdown ledger files with embedded YAML blocks into CanonicalLedger objects
+- **Ledger Parser**: `server/ledgerParser.ts` — parses markdown ledger files (YAML blocks or plain bullet-list format) and JSON ledger files (v2.2 canonical format) into CanonicalLedger objects
 - **Running**: Production build via `NODE_ENV=production node dist/index.cjs` for stability; run `npm run build` after code changes
 - **Note**: The `process.exit(1)` in `server/vite.ts` is suppressed by an override in `server/index.ts` (dev mode only) to prevent Vite errors from crashing the server
 
@@ -36,21 +36,31 @@ SysEngage is a Systems Engineering tool that implements the Canonical Ledger Spe
 
 ### Multi-Project System
 - Projects contain a name, description, and an optional CanonicalLedger
-- Users can create projects, upload markdown ledger files (.md), switch between projects
+- Users can create projects, upload ledger files (.md markdown or .json canonical format), switch between projects
 - A "Demo Project" with sample seed data is created by default on startup
 - All `/api/ledger/*` endpoints are scoped to the currently active project
 - Project switching invalidates all query caches to refresh views
 - Sidebar has a project selector dropdown for quick switching
 
-### Ledger File Format
-Markdown with embedded YAML code blocks:
+### Ledger File Formats
+Two formats are supported for upload:
+
+**1. Markdown (`.md`)**:
 - `## SectionName` headers define collections (Sources, Requirements, Traces, etc.)
 - `### ElementType ID` headers define individual elements
-- YAML fenced code blocks contain element data
+- YAML fenced code blocks or plain bullet-list format contain element data
 - Sections map to CanonicalLedger fields (Sources→sources, Registers→*_register by register_type, etc.)
 - Parser handles large files (tested with 59K lines, 4,733 elements)
 
-### Ledger Data Model (from spec v1.0)
+**2. JSON Canonical (`.json` / `.ledger.json`) — v2.2 spec**:
+- Flat `elements[]` array with `{ element_type, element_id, payload }` envelopes
+- Top-level metadata: `sysengage_ledger_version`, `schema_id`, `row_target`, `run_id`, `created_utc`, `generator`
+- `register_index[]` for fast register lookup
+- `content_hash` for integrity verification (accepted but not validated)
+- `parseJsonLedger()` dispatches each element by type into CanonicalLedger arrays/registers
+- Frontend detects `.json` extension and sends with `application/json` content type
+
+### Ledger Data Model (from spec v2.2)
 The ledger contains these element types with their registers:
 - **Provenance**: Source, Segment, SourceAtom, Domain
 - **Requirements**: Requirement, CandidateRequirement, Constraint

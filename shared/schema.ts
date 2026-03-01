@@ -420,11 +420,31 @@ export interface ChangeRecord {
   confidence: number;
 }
 
+export interface ConcernCategory {
+  concern_category_id: string;
+  name: string;
+  description?: string;
+  confidence?: number;
+  [key: string]: unknown;
+}
+
+export interface ArtefactState {
+  artefact_state_id: string;
+  element_id: string;
+  state: string;
+  changed_utc?: string;
+  confidence?: number;
+  [key: string]: unknown;
+}
+
 export interface CanonicalLedger {
   ledger_id: string;
   version: string;
   created_utc: string;
   row_target?: string;
+  run_id?: string;
+  schema_id?: string;
+  generator?: { name: string; version: string; build?: string; execution_model?: string };
   sources: Source[];
   source_register: Register;
   findings: Finding[];
@@ -487,12 +507,15 @@ export interface CanonicalLedger {
   signal_register: Register;
   concerns: Concern[];
   concern_register: Register;
+  concern_categories: ConcernCategory[];
   closure_matrices: ClosureMatrix[];
   closure_matrix_register: Register;
   baselines: Baseline[];
   baseline_register: Register;
+  artefact_states: ArtefactState[];
   change_records: ChangeRecord[];
   change_record_register: Register;
+  analysis_pass_register: Register;
 }
 
 export interface LedgerStats {

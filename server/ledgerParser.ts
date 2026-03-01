@@ -203,12 +203,15 @@ function createEmptyLedger(): CanonicalLedger {
     signal_register: emptyRegister(),
     concerns: [],
     concern_register: emptyRegister(),
+    concern_categories: [],
     closure_matrices: [],
     closure_matrix_register: emptyRegister(),
     baselines: [],
     baseline_register: emptyRegister(),
+    artefact_states: [],
     change_records: [],
     change_record_register: emptyRegister(),
+    analysis_pass_register: emptyRegister(),
   };
 }
 
@@ -569,6 +572,222 @@ function parseElementsSection(
   }
 
   return elementCount;
+}
+
+const JSON_ELEMENT_TYPE_TO_FIELD: Record<string, string> = {
+  Source: "sources",
+  Finding: "findings",
+  Gap: "gaps",
+  ZachmanCell: "zachman_cells",
+  CellContentItem: "cell_content_items",
+  CellRelationship: "cell_relationships",
+  Trace: "traces",
+  Domain: "domains",
+  Requirement: "requirements",
+  Risk: "risks",
+  Issue: "issues",
+  Question: "questions",
+  Answer: "answers",
+  Assumption: "assumptions",
+  Constraint: "constraints",
+  CandidateRequirement: "candidate_requirements",
+  Suggestion: "suggestions",
+  Decision: "decisions",
+  CoverageItem: "coverage_items",
+  Rule: "rules",
+  Evaluation: "evaluations",
+  Violation: "violations",
+  AnalysisPass: "analysis_passes",
+  Stakeholder: "stakeholders",
+  NarrativeSummary: "narrative_summaries",
+  Segment: "segments",
+  SourceAtom: "source_atoms",
+  Checklist: "checklists",
+  StructuralRepresentation: "structural_representations",
+  ControlArtefact: "control_artefacts",
+  Signal: "signals",
+  Concern: "concerns",
+  ConcernCategory: "concern_categories",
+  ClosureMatrix: "closure_matrices",
+  Baseline: "baselines",
+  ArtefactState: "artefact_states",
+  ChangeRecord: "change_records",
+};
+
+const JSON_REGISTER_TYPE_TO_FIELD: Record<string, string> = {
+  SourceRegister: "source_register",
+  FindingsRegister: "findings_register",
+  GapRegister: "gap_register",
+  ZachmanCellRegister: "zachman_cell_register",
+  TraceRegister: "trace_register",
+  DomainRegister: "domain_register",
+  RequirementRegister: "requirement_register",
+  ActiveRiskRegister: "active_risk_register",
+  IssueRegister: "issue_register",
+  QuestionRegister: "question_register",
+  AnswerRegister: "answer_register",
+  AssumptionRegister: "assumption_register",
+  ConstraintRegister: "constraint_register",
+  CandidateRequirementRegister: "candidate_requirement_register",
+  SuggestionRegister: "suggestion_register",
+  DecisionRegister: "decision_register",
+  CoverageRegister: "coverage_register",
+  EvaluationRegister: "evaluation_register",
+  ViolationRegister: "violation_register",
+  StakeholderRegister: "stakeholder_register",
+  NarrativeSummaryRegister: "narrative_summary_register",
+  SegmentRegister: "segment_register",
+  SourceAtomRegister: "source_atom_register",
+  CellContentItemRegister: "cell_content_item_register",
+  CellRelationshipRegister: "cell_relationship_register",
+  ChecklistRegister: "checklist_register",
+  StructuralRepresentationRegister: "structural_representation_register",
+  ControlArtefactRegister: "control_artefact_register",
+  SignalRegister: "signal_register",
+  ConcernRegister: "concern_register",
+  ClosureMatrixRegister: "closure_matrix_register",
+  BaselineRegister: "baseline_register",
+  ChangeRecordRegister: "change_record_register",
+  AnalysisPassRegister: "analysis_pass_register",
+};
+
+interface JsonLedgerEnvelope {
+  element_type: string;
+  element_id: string;
+  payload: Record<string, unknown>;
+  trace_links?: string[];
+}
+
+interface JsonLedgerInstance {
+  sysengage_ledger_version?: string;
+  schema_id?: string;
+  row_target?: string;
+  run_id?: string;
+  created_utc?: string;
+  generator?: { name: string; version: string; build?: string; execution_model?: string };
+  elements?: JsonLedgerEnvelope[];
+  register_index?: { register_type: string; register_id: string }[];
+  content_hash?: { algorithm?: string; value?: string };
+  warnings?: unknown[];
+}
+
+export function parseJsonLedger(json: JsonLedgerInstance): ParseResult {
+  const warnings: ParseWarning[] = [];
+  const ledger = createEmptyLedger();
+
+  ledger.version = json.sysengage_ledger_version || "2.2";
+  ledger.created_utc = json.created_utc || new Date().toISOString();
+  ledger.ledger_id = json.run_id || "";
+  ledger.row_target = json.row_target;
+  ledger.run_id = json.run_id;
+  ledger.schema_id = json.schema_id;
+  ledger.generator = json.generator;
+
+  const elements = json.elements;
+  if (!elements || !Array.isArray(elements)) {
+    warnings.push({ section: "root", message: "No 'elements' array found in JSON ledger" });
+    return { ledger, warnings, elementCount: 0 };
+  }
+
+  let elementCount = 0;
+
+  for (const envelope of elements) {
+    const { element_type, element_id, payload } = envelope;
+
+    if (!element_type || !element_id) {
+      warnings.push({ section: "elements", message: `Skipping element with missing type or id` });
+      continue;
+    }
+
+    const elementData: Record<string, unknown> = { ...payload };
+
+    const idFieldMap: Record<string, string> = {
+      Source: "source_id", Finding: "finding_id", Gap: "gap_id",
+      ZachmanCell: "cell_id", CellContentItem: "cell_content_item_id",
+      CellRelationship: "cell_relationship_id", Trace: "trace_id",
+      Domain: "domain_id", Requirement: "requirement_id", Risk: "risk_id",
+      Issue: "issue_id", Question: "question_id", Answer: "answer_id",
+      Assumption: "assumption_id", Constraint: "constraint_id",
+      CandidateRequirement: "candidate_requirement_id", Suggestion: "suggestion_id",
+      Decision: "decision_id", CoverageItem: "coverage_item_id", Rule: "rule_id",
+      Evaluation: "evaluation_id", Violation: "violation_id",
+      AnalysisPass: "analysis_pass_id", Stakeholder: "stakeholder_id",
+      NarrativeSummary: "narrative_summary_id", Segment: "segment_id",
+      SourceAtom: "source_atom_id", Checklist: "checklist_id",
+      StructuralRepresentation: "structural_representation_id",
+      ControlArtefact: "control_artefact_id", Signal: "signal_id",
+      Concern: "concern_id", ConcernCategory: "concern_category_id",
+      ClosureMatrix: "closure_matrix_id", Baseline: "baseline_id",
+      ArtefactState: "artefact_state_id", ChangeRecord: "change_id",
+    };
+
+    const idField = idFieldMap[element_type];
+    if (idField && !elementData[idField]) {
+      elementData[idField] = element_id;
+    }
+    if (!elementData.id) {
+      elementData.id = element_id;
+    }
+
+    const registerField = JSON_REGISTER_TYPE_TO_FIELD[element_type];
+    if (registerField) {
+      const register: Register = {
+        register_id: (elementData.register_id as string) || element_id,
+        register_type: (elementData.register_type as string) || element_type,
+        member_ids: (elementData.member_ids as string[]) || [],
+        completeness_rule: (elementData.completeness_rule as string) || "",
+      };
+      (ledger as unknown as Record<string, Register>)[registerField] = register;
+      elementCount++;
+      continue;
+    }
+
+    const arrayField = JSON_ELEMENT_TYPE_TO_FIELD[element_type];
+    if (arrayField) {
+      const arr = (ledger as unknown as Record<string, unknown[]>)[arrayField];
+      if (Array.isArray(arr)) {
+        arr.push(elementData);
+        elementCount++;
+      } else {
+        warnings.push({
+          section: element_type,
+          element: element_id,
+          message: `Field '${arrayField}' is not an array on CanonicalLedger`,
+        });
+      }
+      continue;
+    }
+
+    if (element_type === "Register") {
+      const regType = (elementData.register_type as string) || "";
+      const mappedField = REGISTER_TYPE_TO_FIELD[regType];
+      if (mappedField) {
+        const register: Register = {
+          register_id: (elementData.register_id as string) || element_id,
+          register_type: regType,
+          member_ids: (elementData.member_ids as string[]) || [],
+          completeness_rule: (elementData.completeness_rule as string) || "",
+        };
+        (ledger as unknown as Record<string, Register>)[mappedField] = register;
+        elementCount++;
+      } else {
+        warnings.push({
+          section: "Register",
+          element: element_id,
+          message: `Unknown register_type '${regType}'`,
+        });
+      }
+      continue;
+    }
+
+    warnings.push({
+      section: "elements",
+      element: element_id,
+      message: `Unknown element_type '${element_type}' — skipped`,
+    });
+  }
+
+  return { ledger, warnings, elementCount };
 }
 
 export function parseLedgerMarkdown(markdown: string): ParseResult {

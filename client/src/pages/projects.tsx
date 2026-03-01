@@ -268,9 +268,10 @@ function ProjectCard({
     setUploading(true);
     try {
       const text = await file.text();
+      const isJson = file.name.endsWith(".json");
       const res = await fetch(`/api/projects/${project.id}/ledger`, {
         method: "POST",
-        headers: { "Content-Type": "text/markdown" },
+        headers: { "Content-Type": isJson ? "application/json" : "text/markdown" },
         body: text,
       });
       if (!res.ok) {
@@ -355,7 +356,7 @@ function ProjectCard({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".md,.markdown,.txt"
+          accept=".md,.markdown,.txt,.json"
           className="hidden"
           onChange={handleUpload}
           data-testid={`input-file-${project.id}`}

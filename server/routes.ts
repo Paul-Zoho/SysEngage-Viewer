@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertProjectSchema } from "@shared/schema";
-import { parseLedgerMarkdown } from "./ledgerParser";
+import { parseLedgerMarkdown, parseJsonLedger } from "./ledgerParser";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -166,13 +166,39 @@ export async function registerRoutes(
       return res.status(404).json({ message: "Project not found" });
     }
 
+    const contentType = (req.headers["content-type"] || "").toLowerCase();
+    const isJson = contentType.includes("application/json") ||
+      (typeof req.body === "object" && req.body !== null && !Array.isArray(req.body) && req.body.elements);
+
+    if (isJson) {
+      try {
+        let jsonData: Record<string, unknown>;
+        if (typeof req.body === "string") {
+          jsonData = JSON.parse(req.body);
+        } else {
+          jsonData = req.body;
+        }
+        const result = parseJsonLedger(jsonData as any);
+        await storage.setProjectLedger(req.params.id, result.ledger);
+        res.json({
+          success: true,
+          elementCount: result.elementCount,
+          warnings: result.warnings,
+          ledgerId: result.ledger.ledger_id,
+        });
+      } catch (err: any) {
+        res.status(400).json({ message: `Failed to parse JSON ledger: ${err.message}` });
+      }
+      return;
+    }
+
     let markdownContent: string;
     if (typeof req.body === "string") {
       markdownContent = req.body;
     } else if (req.body?.content && typeof req.body.content === "string") {
       markdownContent = req.body.content;
     } else {
-      return res.status(400).json({ message: "Expected markdown content as text or JSON { content: string }" });
+      return res.status(400).json({ message: "Expected markdown content as text, JSON { content: string }, or a JSON ledger file" });
     }
 
     if (markdownContent.length < 10) {

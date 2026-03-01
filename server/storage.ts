@@ -28,7 +28,10 @@ function computeElementCount(ledger: CanonicalLedger): number {
     ledger.segments.length + ledger.source_atoms.length + ledger.cell_content_items.length +
     ledger.cell_relationships.length + ledger.checklists.length + ledger.structural_representations.length +
     ledger.control_artefacts.length + ledger.signals.length + ledger.concerns.length +
-    ledger.closure_matrices.length + ledger.baselines.length + ledger.change_records.length;
+    (ledger.concern_categories?.length || 0) +
+    ledger.closure_matrices.length + ledger.baselines.length +
+    (ledger.artefact_states?.length || 0) +
+    ledger.change_records.length;
 }
 
 function computeLedgerStats(l: CanonicalLedger): LedgerStats {
