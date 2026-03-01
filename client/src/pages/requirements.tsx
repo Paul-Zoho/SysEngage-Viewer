@@ -39,7 +39,7 @@ export default function Requirements() {
                 <TableHead className="w-[100px]">Type</TableHead>
                 <TableHead className="w-[80px]">Priority</TableHead>
                 <TableHead className="w-[100px]">Verification</TableHead>
-                <TableHead className="w-[100px]">Sources</TableHead>
+                <TableHead className="w-[140px]">References</TableHead>
                 <TableHead className="w-[60px] text-center">Conf.</TableHead>
               </TableRow>
             </TableHeader>
@@ -65,7 +65,12 @@ export default function Requirements() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <ElementRefList refs={req.source_refs} />
+                    <div className="space-y-0.5">
+                      <ElementRefList refs={req.source_refs} label="Src" />
+                      <ElementRefList refs={(req as any).supporting_signal_refs} label="Sig" />
+                      <ElementRefList refs={(req as any).supporting_cellcontent_refs} label="CCI" />
+                      <ElementRefList refs={req.domain_refs} label="Dom" />
+                    </div>
                   </TableCell>
                   <TableCell className="text-center">
                     <ConfidenceIndicator value={req.confidence} showLabel />
