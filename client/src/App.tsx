@@ -21,6 +21,7 @@ import Stakeholders from "@/pages/stakeholders";
 import Explorer from "@/pages/explorer";
 import Projects from "@/pages/projects";
 import Relationships from "@/pages/relationships";
+import Segments from "@/pages/segments";
 import ElementDetail from "@/pages/element-detail";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -42,6 +43,7 @@ function Router() {
       <Route path="/explorer" component={Explorer} />
       <Route path="/projects" component={Projects} />
       <Route path="/relationships" component={Relationships} />
+      <Route path="/segments" component={Segments} />
       <Route path="/element/:id" component={ElementDetail} />
       <Route component={NotFound} />
     </Switch>

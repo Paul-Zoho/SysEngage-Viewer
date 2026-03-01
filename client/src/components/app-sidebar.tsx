@@ -29,6 +29,7 @@ import {
   FolderOpen,
   ChevronsUpDown,
   Network,
+  SplitSquareHorizontal,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -55,6 +56,7 @@ const navGroups = [
     label: "Provenance",
     items: [
       { title: "Sources", url: "/sources", icon: FileText },
+      { title: "Segments", url: "/segments", icon: SplitSquareHorizontal },
       { title: "Domains", url: "/domains", icon: Layers },
       { title: "Traceability", url: "/traces", icon: GitBranch },
       { title: "Relationships", url: "/relationships", icon: Network },
@@ -96,6 +98,7 @@ const countKeys: Record<string, keyof LedgerStats> = {
   "Decisions": "decisions",
   "Domains": "domains",
   "Stakeholders": "stakeholders",
+  "Segments": "segments",
 };
 
 export function AppSidebar() {

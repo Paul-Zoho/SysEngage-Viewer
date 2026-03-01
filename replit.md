@@ -81,7 +81,8 @@ Each element type has a corresponding Register that tracks all member IDs for co
 2. **Projects** - Create, manage, upload ledger files, switch active project
 3. **Ledger Explorer** - Hierarchical register browser with metadata
 4. **Sources** - Source excerpts table with provenance data
-5. **Domains** - Domain classification cards
+5. **Segments** - Logical groupings of source text with titles, descriptions, and source references
+6. **Domains** - Domain classification cards
 6. **Traceability** - Trace relationships with flat/grouped views, type filtering, and search
 7. **Relationships** - Relationship matrix showing cross-type element connections with interactive filtering
 8. **Requirements** - Requirements with type, priority, verification

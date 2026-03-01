@@ -109,6 +109,7 @@ function computeLedgerStats(l: CanonicalLedger): LedgerStats {
     findingSeverity,
     domains: l.domains.length,
     stakeholders: l.stakeholders.length,
+    segments: l.segments.length,
     registers: registers.length,
   };
 }
@@ -121,7 +122,7 @@ const emptyStats: LedgerStats = {
   issueStatus: { open: 0, inProgress: 0, resolved: 0, closed: 0 },
   gapResolution: { open: 0, accepted: 0, mitigated: 0, closed: 0 },
   findingSeverity: { high: 0, medium: 0, low: 0 },
-  domains: 0, stakeholders: 0, registers: 0,
+  domains: 0, stakeholders: 0, segments: 0, registers: 0,
 };
 
 let nextProjectNum = 1;

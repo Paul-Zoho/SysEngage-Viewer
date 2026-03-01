@@ -91,6 +91,11 @@ export async function registerRoutes(
     res.json(ledger?.stakeholders ?? []);
   });
 
+  app.get("/api/ledger/segments", async (_req, res) => {
+    const ledger = await storage.getLedger();
+    res.json(ledger?.segments ?? []);
+  });
+
   app.get("/api/ledger/element/:id", async (req, res) => {
     const ledger = await storage.getLedger();
     if (!ledger) return res.status(404).json({ error: "No ledger" });
@@ -331,8 +336,10 @@ export async function registerRoutes(
       (s.domain_refs || []).forEach(ref => addEdge(s.stakeholder_id, ref, "domain_ref"));
     });
 
-    ledger.segments.forEach(s => {
+    ledger.segments.forEach((s: any) => {
+      addNode(s.segment_id, "Segment", s.title || s.segment_text?.slice(0, 60) || s.segment_id);
       if (s.source_id) addEdge(s.segment_id, s.source_id, "segment_of");
+      (s.source_refs || []).forEach((ref: string) => addEdge(s.segment_id, ref, "source_ref"));
     });
 
     ledger.source_atoms.forEach(a => {

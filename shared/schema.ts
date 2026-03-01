@@ -535,6 +535,7 @@ export interface LedgerStats {
   findingSeverity: { high: number; medium: number; low: number };
   domains: number;
   stakeholders: number;
+  segments: number;
   registers: number;
 }
 
