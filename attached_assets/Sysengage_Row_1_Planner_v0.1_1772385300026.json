@@ -1,0 +1,227 @@
+{
+  "sysengage_ledger_version": "2.2",
+  "schema_id": "sysengage.ledger.instance.v2_2",
+  "row_target": "Row1.Planner",
+  "run_id": "Row1.Planner.Step1.InputAcquisition.v1.0",
+  "created_utc": "2026-03-01T00:00:00Z",
+  "generator": {
+    "name": "SysEngage AI Tool",
+    "version": "v1.0",
+    "execution_model": "sysengage_row_1_planner_operational_spec_AI_v1.6"
+  },
+  "elements": [
+    {
+      "element_type": "Source",
+      "element_id": "S-001",
+      "payload": {
+        "source_id": "S-001",
+        "source_text": "I want to build an AI systems engineering tool.",
+        "segmentation_context": "Tool Purpose",
+        "confidence": 0.95
+      }
+    },
+    {
+      "element_type": "Source",
+      "element_id": "S-002",
+      "payload": {
+        "source_id": "S-002",
+        "source_text": "The aim is that a user will provide an unstructured prompt or existing documentation sets that details a product.",
+        "segmentation_context": "User Input",
+        "confidence": 0.95
+      }
+    },
+    {
+      "element_type": "Source",
+      "element_id": "S-003",
+      "payload": {
+        "source_id": "S-003",
+        "source_text": "The tool will then analyse the provided input and analyse it to understand the product intent and take the documents to determine gaps in the design that need closing and generate a concrete design for the product.",
+        "segmentation_context": "Tool Function",
+        "confidence": 0.95
+      }
+    },
+    {
+      "element_type": "Source",
+      "element_id": "S-004",
+      "payload": {
+        "source_id": "S-004",
+        "source_text": "The product shall be analysed from a completion, robustness, safety and cyber security perspective.",
+        "segmentation_context": "Analysis Perspective",
+        "confidence": 0.95
+      }
+    },
+    {
+      "element_type": "Source",
+      "element_id": "S-005",
+      "payload": {
+        "source_id": "S-005",
+        "source_text": "I want the tool to be based on a classification framework such as Zachman to aid in the structured approach.",
+        "segmentation_context": "Framework",
+        "confidence": 0.95
+      }
+    },
+    {
+      "element_type": "Source",
+      "element_id": "S-006",
+      "payload": {
+        "source_id": "S-006",
+        "source_text": "I want the product output to be detailed in formal requirement sets grouped by common domains.",
+        "segmentation_context": "Output Format",
+        "confidence": 0.95
+      }
+    },
+    {
+      "element_type": "Source",
+      "element_id": "S-007",
+      "payload": {
+        "source_id": "S-007",
+        "source_text": "The tool shall also align the design to provided standards OR find appropriate standards that will be required to be met by the product.",
+        "segmentation_context": "Standards Alignment",
+        "confidence": 0.95
+      }
+    },
+    {
+      "element_type": "Source",
+      "element_id": "S-008",
+      "payload": {
+        "source_id": "S-008",
+        "source_text": "The tool can ask questions of the user to help close gaps in knowledge where required.",
+        "segmentation_context": "User Interaction",
+        "confidence": 0.95
+      }
+    },
+    {
+      "element_type": "SourceRegister",
+      "element_id": "REG-SOURCE",
+      "payload": {
+        "register_id": "REG-SOURCE",
+        "register_type": "Source",
+        "member_ids": [
+          "S-001", "S-002", "S-003", "S-004",
+          "S-005", "S-006", "S-007", "S-008"
+        ],
+        "completeness_rule": "This register SHALL contain the identifiers of ALL Source elements present in the ledger.",
+        "confidence": 1.0
+      }
+    },
+    {
+      "element_type": "Segment",
+      "element_id": "SEG-001",
+      "payload": {
+        "segment_id": "SEG-001",
+        "title": "Tool Purpose",
+        "description": "Segment describing the purpose of the AI systems engineering tool.",
+        "source_refs": ["S-001"],
+        "confidence": 0.95
+      }
+    },
+    {
+      "element_type": "Segment",
+      "element_id": "SEG-002",
+      "payload": {
+        "segment_id": "SEG-002",
+        "title": "User Input",
+        "description": "Segment describing the expected user input for the tool.",
+        "source_refs": ["S-002"],
+        "confidence": 0.95
+      }
+    },
+    {
+      "element_type": "Segment",
+      "element_id": "SEG-003",
+      "payload": {
+        "segment_id": "SEG-003",
+        "title": "Tool Function",
+        "description": "Segment describing the core functions of the tool.",
+        "source_refs": ["S-003"],
+        "confidence": 0.95
+      }
+    },
+    {
+      "element_type": "Segment",
+      "element_id": "SEG-004",
+      "payload": {
+        "segment_id": "SEG-004",
+        "title": "Analysis Perspective",
+        "description": "Segment describing the perspectives for product analysis.",
+        "source_refs": ["S-004"],
+        "confidence": 0.95
+      }
+    },
+    {
+      "element_type": "Segment",
+      "element_id": "SEG-005",
+      "payload": {
+        "segment_id": "SEG-005",
+        "title": "Framework",
+        "description": "Segment describing the classification framework for the tool.",
+        "source_refs": ["S-005"],
+        "confidence": 0.95
+      }
+    },
+    {
+      "element_type": "Segment",
+      "element_id": "SEG-006",
+      "payload": {
+        "segment_id": "SEG-006",
+        "title": "Output Format",
+        "description": "Segment describing the expected output format of the tool.",
+        "source_refs": ["S-006"],
+        "confidence": 0.95
+      }
+    },
+    {
+      "element_type": "Segment",
+      "element_id": "SEG-007",
+      "payload": {
+        "segment_id": "SEG-007",
+        "title": "Standards Alignment",
+        "description": "Segment describing the standards alignment function of the tool.",
+        "source_refs": ["S-007"],
+        "confidence": 0.95
+      }
+    },
+    {
+      "element_type": "Segment",
+      "element_id": "SEG-008",
+      "payload": {
+        "segment_id": "SEG-008",
+        "title": "User Interaction",
+        "description": "Segment describing the user interaction capability of the tool.",
+        "source_refs": ["S-008"],
+        "confidence": 0.95
+      }
+    },
+    {
+      "element_type": "SegmentRegister",
+      "element_id": "REG-SEGMENT",
+      "payload": {
+        "register_id": "REG-SEGMENT",
+        "register_type": "Segment",
+        "member_ids": [
+          "SEG-001", "SEG-002", "SEG-003", "SEG-004",
+          "SEG-005", "SEG-006", "SEG-007", "SEG-008"
+        ],
+        "completeness_rule": "This register SHALL contain the identifiers of ALL Segment elements present in the ledger.",
+        "confidence": 1.0
+      }
+    },
+    {
+      "element_type": "AnalysisPass",
+      "element_id": "P0",
+      "payload": {
+        "pass_id": "P0",
+        "pass_type": "Source Atomisation",
+        "evaluated_scope": "sys_engage_specification_v2",
+        "confidence": 0.95,
+        "coverage_declaration": {
+          "coverage_mode": "FULL",
+          "coverage_scope": "entire document",
+          "coverage_exclusions": [],
+          "coverage_assertion": "Pass 0 processed the entire input document (full read).",
+          "coverage_confidence": 0.95
+        }
+      }
+    }
+  ]
+}
