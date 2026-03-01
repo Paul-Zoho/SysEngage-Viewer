@@ -1,7 +1,5 @@
-import { createContext, useContext } from "react";
 import { cn } from "@/lib/utils";
-
-export const ElementDetailContext = createContext<((id: string) => void) | null>(null);
+import { useLocation } from "wouter";
 
 interface ElementIdProps {
   id: string;
@@ -10,8 +8,7 @@ interface ElementIdProps {
 }
 
 export function ElementId({ id, className, clickable = true }: ElementIdProps) {
-  const openDetail = useContext(ElementDetailContext);
-  const isClickable = clickable && openDetail && id;
+  const [, navigate] = useLocation();
 
   if (!id) {
     return (
@@ -21,11 +18,11 @@ export function ElementId({ id, className, clickable = true }: ElementIdProps) {
     );
   }
 
-  if (isClickable) {
+  if (clickable) {
     return (
       <button
         type="button"
-        onClick={() => openDetail(id)}
+        onClick={() => navigate(`/element/${encodeURIComponent(id)}`)}
         className={cn(
           "text-[11px] font-mono bg-muted px-1.5 py-0.5 rounded-sm text-primary",
           "hover:bg-primary/10 hover:underline cursor-pointer transition-colors",

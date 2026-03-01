@@ -91,6 +91,116 @@ export async function registerRoutes(
     res.json(ledger?.stakeholders ?? []);
   });
 
+  app.get("/api/ledger/element/:id", async (req, res) => {
+    const ledger = await storage.getLedger();
+    if (!ledger) return res.status(404).json({ error: "No ledger" });
+
+    const elementId = req.params.id;
+
+    const collectionMap: Record<string, { array: any[]; type: string; idField: string }> = {
+      sources: { array: ledger.sources, type: "Source", idField: "source_id" },
+      domains: { array: ledger.domains, type: "Domain", idField: "domain_id" },
+      findings: { array: ledger.findings, type: "Finding", idField: "finding_id" },
+      gaps: { array: ledger.gaps, type: "Gap", idField: "gap_id" },
+      requirements: { array: ledger.requirements, type: "Requirement", idField: "requirement_id" },
+      risks: { array: ledger.risks, type: "Risk", idField: "risk_id" },
+      issues: { array: ledger.issues, type: "Issue", idField: "issue_id" },
+      traces: { array: ledger.traces, type: "Trace", idField: "trace_id" },
+      decisions: { array: ledger.decisions, type: "Decision", idField: "decision_id" },
+      questions: { array: ledger.questions, type: "Question", idField: "question_id" },
+      answers: { array: ledger.answers, type: "Answer", idField: "answer_id" },
+      assumptions: { array: ledger.assumptions, type: "Assumption", idField: "assumption_id" },
+      constraints: { array: ledger.constraints, type: "Constraint", idField: "constraint_id" },
+      suggestions: { array: ledger.suggestions, type: "Suggestion", idField: "suggestion_id" },
+      stakeholders: { array: ledger.stakeholders, type: "Stakeholder", idField: "stakeholder_id" },
+      coverage_items: { array: ledger.coverage_items, type: "CoverageItem", idField: "coverage_item_id" },
+      rules: { array: ledger.rules, type: "Rule", idField: "rule_id" },
+      evaluations: { array: ledger.evaluations, type: "Evaluation", idField: "evaluation_id" },
+      violations: { array: ledger.violations, type: "Violation", idField: "violation_id" },
+      signals: { array: ledger.signals, type: "Signal", idField: "signal_id" },
+      concerns: { array: ledger.concerns, type: "Concern", idField: "concern_id" },
+      candidate_requirements: { array: ledger.candidate_requirements, type: "CandidateRequirement", idField: "candidate_requirement_id" },
+      zachman_cells: { array: ledger.zachman_cells, type: "ZachmanCell", idField: "cell_id" },
+      cell_content_items: { array: ledger.cell_content_items, type: "CellContentItem", idField: "cell_content_item_id" },
+      narrative_summaries: { array: ledger.narrative_summaries, type: "NarrativeSummary", idField: "narrative_summary_id" },
+      structural_representations: { array: ledger.structural_representations, type: "StructuralRepresentation", idField: "structural_representation_id" },
+      control_artefacts: { array: ledger.control_artefacts, type: "ControlArtefact", idField: "control_artefact_id" },
+      segments: { array: ledger.segments, type: "Segment", idField: "segment_id" },
+      source_atoms: { array: ledger.source_atoms, type: "SourceAtom", idField: "atom_id" },
+      change_records: { array: ledger.change_records, type: "ChangeRecord", idField: "change_id" },
+      baselines: { array: ledger.baselines, type: "Baseline", idField: "baseline_id" },
+      analysis_passes: { array: ledger.analysis_passes, type: "AnalysisPass", idField: "pass_id" },
+    };
+
+    for (const [, col] of Object.entries(collectionMap)) {
+      const found = col.array.find((el: any) => el.id === elementId || el[col.idField] === elementId);
+      if (found) {
+        return res.json({ element: found, type: col.type });
+      }
+    }
+
+    return res.status(404).json({ error: "Element not found" });
+  });
+
+  app.get("/api/ledger/elements/batch", async (req, res) => {
+    const ledger = await storage.getLedger();
+    if (!ledger) return res.json({ elements: {} });
+
+    const idsParam = req.query.ids as string;
+    if (!idsParam) return res.json({ elements: {} });
+    const ids = idsParam.split(",").map(s => s.trim()).filter(Boolean);
+    if (ids.length === 0) return res.json({ elements: {} });
+
+    const collections: { array: any[]; type: string; idField: string }[] = [
+      { array: ledger.sources, type: "Source", idField: "source_id" },
+      { array: ledger.domains, type: "Domain", idField: "domain_id" },
+      { array: ledger.findings, type: "Finding", idField: "finding_id" },
+      { array: ledger.gaps, type: "Gap", idField: "gap_id" },
+      { array: ledger.requirements, type: "Requirement", idField: "requirement_id" },
+      { array: ledger.risks, type: "Risk", idField: "risk_id" },
+      { array: ledger.issues, type: "Issue", idField: "issue_id" },
+      { array: ledger.traces, type: "Trace", idField: "trace_id" },
+      { array: ledger.decisions, type: "Decision", idField: "decision_id" },
+      { array: ledger.questions, type: "Question", idField: "question_id" },
+      { array: ledger.answers, type: "Answer", idField: "answer_id" },
+      { array: ledger.assumptions, type: "Assumption", idField: "assumption_id" },
+      { array: ledger.constraints, type: "Constraint", idField: "constraint_id" },
+      { array: ledger.suggestions, type: "Suggestion", idField: "suggestion_id" },
+      { array: ledger.stakeholders, type: "Stakeholder", idField: "stakeholder_id" },
+      { array: ledger.coverage_items, type: "CoverageItem", idField: "coverage_item_id" },
+      { array: ledger.rules, type: "Rule", idField: "rule_id" },
+      { array: ledger.evaluations, type: "Evaluation", idField: "evaluation_id" },
+      { array: ledger.violations, type: "Violation", idField: "violation_id" },
+      { array: ledger.signals, type: "Signal", idField: "signal_id" },
+      { array: ledger.concerns, type: "Concern", idField: "concern_id" },
+      { array: ledger.candidate_requirements, type: "CandidateRequirement", idField: "candidate_requirement_id" },
+      { array: ledger.zachman_cells, type: "ZachmanCell", idField: "cell_id" },
+      { array: ledger.cell_content_items, type: "CellContentItem", idField: "cell_content_item_id" },
+      { array: ledger.narrative_summaries, type: "NarrativeSummary", idField: "narrative_summary_id" },
+      { array: ledger.structural_representations, type: "StructuralRepresentation", idField: "structural_representation_id" },
+      { array: ledger.control_artefacts, type: "ControlArtefact", idField: "control_artefact_id" },
+      { array: ledger.segments, type: "Segment", idField: "segment_id" },
+      { array: ledger.source_atoms, type: "SourceAtom", idField: "atom_id" },
+      { array: ledger.change_records, type: "ChangeRecord", idField: "change_id" },
+      { array: ledger.baselines, type: "Baseline", idField: "baseline_id" },
+      { array: ledger.analysis_passes, type: "AnalysisPass", idField: "pass_id" },
+    ];
+
+    const idSet = new Set(ids);
+    const result: Record<string, { element: any; type: string }> = {};
+
+    for (const col of collections) {
+      for (const el of col.array) {
+        const elId = el.id || el[col.idField];
+        if (elId && idSet.has(elId) && !result[elId]) {
+          result[elId] = { element: el, type: col.type };
+        }
+      }
+    }
+
+    res.json({ elements: result });
+  });
+
   app.get("/api/ledger/relationships", async (_req, res) => {
     const ledger = await storage.getLedger();
     if (!ledger) return res.json({ nodes: [], edges: [] });

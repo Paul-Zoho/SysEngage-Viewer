@@ -100,13 +100,16 @@ Three interconnected features for exploring element relationships:
 
 2. **Grouped Trace Tables** (`/traces`): Enhanced traceability page with flat/grouped view toggle. Grouped view organizes traces by from→to element type pairs in collapsible cards. Includes trace type filter (ST/DT/GT/AT) and text search.
 
-3. **Element Detail Panel**: Slide-over panel triggered by clicking any ElementId badge across the app. Shows element info, outgoing relationships, and incoming relationships grouped by type. Supports navigation between related elements within the panel.
+3. **Full-Screen Element Detail** (`/element/:id`): Clicking any ElementId badge navigates to a dedicated full-screen page showing all element attributes in a table, plus all outgoing/incoming relationships with full details of related elements (type, description, confidence, etc.). Supports direction/type filtering, search, and clicking through to related elements.
 
 Key components:
 - `client/src/pages/relationships.tsx` - Relationship matrix page
-- `client/src/components/element-detail-panel.tsx` - Detail panel (Sheet)
-- `client/src/components/element-id.tsx` - Clickable ElementId with context-based detail panel integration
+- `client/src/pages/element-detail.tsx` - Full-screen element detail page with attributes and relationships
+- `client/src/components/element-id.tsx` - Clickable ElementId that navigates to `/element/:id`
+- `client/src/components/element-detail-panel.tsx` - Legacy slide-over panel (unused, replaced by full-screen page)
 - `GET /api/ledger/relationships` - Computes unified relationship graph from all element cross-references
+- `GET /api/ledger/element/:id` - Returns full element data with all attributes
+- `GET /api/ledger/elements/batch?ids=...` - Batch fetch full element data for multiple IDs
 
 ### API Endpoints
 - `GET /api/projects` - List all projects with summary info
@@ -118,4 +121,6 @@ Key components:
 - `GET /api/ledger` - Full ledger for active project
 - `GET /api/ledger/stats` - Computed statistics for active project
 - `GET /api/ledger/relationships` - Unified relationship graph (nodes + edges) for active project
+- `GET /api/ledger/element/:id` - Full element data by ID
+- `GET /api/ledger/elements/batch?ids=...` - Batch element lookup
 - `GET /api/ledger/sources|requirements|...` - Individual collections
