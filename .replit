@@ -40,3 +40,8 @@ outputType = "webview"
 task = "shell.exec"
 args = "NODE_ENV=production node dist/index.cjs"
 waitForPort = 5000
+
+[userenv]
+
+[userenv.shared]
+NEON_DATABASE_URL = "postgresql://neondb_owner:npg_Mh7HRKfNwxb3@ep-damp-waterfall-ab0yo5ez-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
