@@ -3,6 +3,24 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertProjectSchema } from "@shared/schema";
 import { parseLedgerMarkdown, parseJsonLedger } from "./ledgerParser";
+import { getNeonDb } from "./neonDb";
+import { importLedgerToNeon } from "./neonImport";
+import * as neonStorage from "./neonStorage";
+
+async function neonQuery<T>(projectId: string, fn: (db: any, pid: string) => Promise<T>): Promise<T | null> {
+  const db = getNeonDb();
+  if (!db) return null;
+  try {
+    return await fn(db, projectId);
+  } catch (e: any) {
+    console.error("[Neon] Query failed, falling back to JSONB:", e.message);
+    return null;
+  }
+}
+
+async function getActiveProjectId(): Promise<string> {
+  return storage.getActiveProjectId();
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -13,94 +31,149 @@ export async function registerRoutes(
   });
 
   app.get("/api/ledger/stats", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, neonStorage.getStats);
+    if (neonResult) return res.json(neonResult);
     res.json(await storage.getLedgerStats());
   });
 
   app.get("/api/ledger/sources", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getCollection(db, p, "sources"));
+    if (neonResult) return res.json(neonResult);
     const ledger = await storage.getLedger();
     res.json(ledger?.sources ?? []);
   });
 
   app.get("/api/ledger/requirements", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getCollection(db, p, "requirements"));
+    if (neonResult) return res.json(neonResult);
     const ledger = await storage.getLedger();
     res.json(ledger?.requirements ?? []);
   });
 
   app.get("/api/ledger/findings", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getCollection(db, p, "findings"));
+    if (neonResult) return res.json(neonResult);
     const ledger = await storage.getLedger();
     res.json(ledger?.findings ?? []);
   });
 
   app.get("/api/ledger/gaps", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getCollection(db, p, "gaps"));
+    if (neonResult) return res.json(neonResult);
     const ledger = await storage.getLedger();
     res.json(ledger?.gaps ?? []);
   });
 
   app.get("/api/ledger/risks", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getCollection(db, p, "risks"));
+    if (neonResult) return res.json(neonResult);
     const ledger = await storage.getLedger();
     res.json(ledger?.risks ?? []);
   });
 
   app.get("/api/ledger/issues", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getCollection(db, p, "issues"));
+    if (neonResult) return res.json(neonResult);
     const ledger = await storage.getLedger();
     res.json(ledger?.issues ?? []);
   });
 
   app.get("/api/ledger/traces", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getCollection(db, p, "traces"));
+    if (neonResult) return res.json(neonResult);
     const ledger = await storage.getLedger();
     res.json(ledger?.traces ?? []);
   });
 
   app.get("/api/ledger/decisions", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getCollection(db, p, "decisions"));
+    if (neonResult) return res.json(neonResult);
     const ledger = await storage.getLedger();
     res.json(ledger?.decisions ?? []);
   });
 
   app.get("/api/ledger/domains", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getCollection(db, p, "domains"));
+    if (neonResult) return res.json(neonResult);
     const ledger = await storage.getLedger();
     res.json(ledger?.domains ?? []);
   });
 
   app.get("/api/ledger/coverage", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getCollection(db, p, "coverage_items"));
+    if (neonResult) return res.json(neonResult);
     const ledger = await storage.getLedger();
     res.json(ledger?.coverage_items ?? []);
   });
 
   app.get("/api/ledger/rules", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getCollection(db, p, "rules"));
+    if (neonResult) return res.json(neonResult);
     const ledger = await storage.getLedger();
     res.json(ledger?.rules ?? []);
   });
 
   app.get("/api/ledger/questions", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getCollection(db, p, "questions"));
+    if (neonResult) return res.json(neonResult);
     const ledger = await storage.getLedger();
     res.json(ledger?.questions ?? []);
   });
 
   app.get("/api/ledger/assumptions", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getCollection(db, p, "assumptions"));
+    if (neonResult) return res.json(neonResult);
     const ledger = await storage.getLedger();
     res.json(ledger?.assumptions ?? []);
   });
 
   app.get("/api/ledger/constraints", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getCollection(db, p, "constraints"));
+    if (neonResult) return res.json(neonResult);
     const ledger = await storage.getLedger();
     res.json(ledger?.constraints ?? []);
   });
 
   app.get("/api/ledger/stakeholders", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getCollection(db, p, "stakeholders"));
+    if (neonResult) return res.json(neonResult);
     const ledger = await storage.getLedger();
     res.json(ledger?.stakeholders ?? []);
   });
 
   app.get("/api/ledger/segments", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getCollection(db, p, "segments"));
+    if (neonResult) return res.json(neonResult);
     const ledger = await storage.getLedger();
     res.json(ledger?.segments ?? []);
   });
 
   app.get("/api/ledger/element/:id", async (req, res) => {
+    const pid = await getActiveProjectId();
+    const elementId = req.params.id;
+
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getElementById(db, p, elementId));
+    if (neonResult) return res.json(neonResult);
+
     const ledger = await storage.getLedger();
     if (!ledger) return res.status(404).json({ error: "No ledger" });
-
-    const elementId = req.params.id;
 
     const collectionMap: Record<string, { array: any[]; type: string; idField: string }> = {
       sources: { array: ledger.sources, type: "Source", idField: "source_id" },
@@ -148,13 +221,17 @@ export async function registerRoutes(
   });
 
   app.get("/api/ledger/elements/batch", async (req, res) => {
-    const ledger = await storage.getLedger();
-    if (!ledger) return res.json({ elements: {} });
-
+    const pid = await getActiveProjectId();
     const idsParam = req.query.ids as string;
     if (!idsParam) return res.json({ elements: {} });
     const ids = idsParam.split(",").map(s => s.trim()).filter(Boolean);
     if (ids.length === 0) return res.json({ elements: {} });
+
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getElementsByIds(db, p, ids));
+    if (neonResult && Object.keys(neonResult).length > 0) return res.json({ elements: neonResult });
+
+    const ledger = await storage.getLedger();
+    if (!ledger) return res.json({ elements: {} });
 
     const collections: { array: any[]; type: string; idField: string }[] = [
       { array: ledger.sources, type: "Source", idField: "source_id" },
@@ -207,6 +284,10 @@ export async function registerRoutes(
   });
 
   app.get("/api/ledger/relationships", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, neonStorage.getRelationships);
+    if (neonResult && neonResult.nodes.length > 0) return res.json(neonResult);
+
     const ledger = await storage.getLedger();
     if (!ledger) return res.json({ nodes: [], edges: [] });
 
@@ -373,6 +454,10 @@ export async function registerRoutes(
   });
 
   app.get("/api/ledger/registers", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const neonResult = await neonQuery(pid, (db, p) => neonStorage.getRegisters(db, p));
+    if (neonResult && neonResult.length > 0) return res.json(neonResult);
+
     const ledger = await storage.getLedger();
     if (!ledger) return res.json([]);
     res.json([
@@ -398,6 +483,43 @@ export async function registerRoutes(
       ledger.stakeholder_register,
       ledger.narrative_summary_register,
     ]);
+  });
+
+  app.get("/api/neon/status", async (_req, res) => {
+    const db = getNeonDb();
+    if (!db) return res.json({ connected: false, reason: "No NEON_DATABASE_URL" });
+    try {
+      const pid = await getActiveProjectId();
+      const hasProjectData = await neonStorage.hasData(db, pid);
+      const hasAny = await neonStorage.hasAnyData(db);
+      res.json({ connected: true, hasProjectData, hasAnyData: hasAny, activeProjectId: pid });
+    } catch (e: any) {
+      res.json({ connected: false, reason: e.message });
+    }
+  });
+
+  app.post("/api/neon/migrate", async (_req, res) => {
+    const db = getNeonDb();
+    if (!db) return res.status(500).json({ error: "Neon not configured" });
+
+    try {
+      const allProjects = await storage.getProjects();
+      const results: Record<string, any> = {};
+
+      for (const proj of allProjects) {
+        const project = await storage.getProject(proj.id);
+        if (!project?.ledger) {
+          results[proj.id] = { skipped: true, reason: "No ledger" };
+          continue;
+        }
+        const importResult = await importLedgerToNeon(db, proj.id, project.ledger);
+        results[proj.id] = importResult;
+      }
+
+      res.json({ success: true, results });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.get("/api/projects", async (_req, res) => {
@@ -461,11 +583,27 @@ export async function registerRoutes(
         }
         const result = parseJsonLedger(jsonData as any);
         await storage.setProjectLedger(req.params.id, result.ledger);
+
+        const neonDb = getNeonDb();
+        let neonImported = false;
+        if (neonDb) {
+          try {
+            const neonResult = await importLedgerToNeon(neonDb, req.params.id, result.ledger);
+            neonImported = neonResult.success;
+            if (!neonResult.success) {
+              console.error("[Neon] Import failed during upload:", neonResult.error);
+            }
+          } catch (e: any) {
+            console.error("[Neon] Import error during upload:", e.message);
+          }
+        }
+
         res.json({
           success: true,
           elementCount: result.elementCount,
           warnings: result.warnings,
           ledgerId: result.ledger.ledger_id,
+          neonImported,
         });
       } catch (err: any) {
         res.status(400).json({ message: `Failed to parse JSON ledger: ${err.message}` });
@@ -489,11 +627,24 @@ export async function registerRoutes(
     try {
       const result = parseLedgerMarkdown(markdownContent);
       await storage.setProjectLedger(req.params.id, result.ledger);
+
+      const neonDb = getNeonDb();
+      let neonImported = false;
+      if (neonDb) {
+        try {
+          const neonResult = await importLedgerToNeon(neonDb, req.params.id, result.ledger);
+          neonImported = neonResult.success;
+        } catch (e: any) {
+          console.error("[Neon] Import error during markdown upload:", e.message);
+        }
+      }
+
       res.json({
         success: true,
         elementCount: result.elementCount,
         warnings: result.warnings,
         ledgerId: result.ledger.ledger_id,
+        neonImported,
       });
     } catch (err: any) {
       res.status(400).json({ message: `Failed to parse ledger: ${err.message}` });

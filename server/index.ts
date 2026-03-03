@@ -3,6 +3,9 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { storage } from "./storage";
+import { getNeonDb } from "./neonDb";
+import { importLedgerToNeon } from "./neonImport";
+import * as neonStorage from "./neonStorage";
 
 const app = express();
 const httpServer = createServer(app);
@@ -52,6 +55,33 @@ app.use((req, res, next) => {
 
 (async () => {
   await storage.initialize();
+
+  const neonDb = getNeonDb();
+  if (neonDb) {
+    try {
+      const hasAny = await neonStorage.hasAnyData(neonDb);
+      if (!hasAny) {
+        log("Neon has no data — auto-migrating existing projects...", "neon");
+        const allProjects = await storage.getProjects();
+        for (const proj of allProjects) {
+          const project = await storage.getProject(proj.id);
+          if (!project?.ledger) continue;
+          const result = await importLedgerToNeon(neonDb, proj.id, project.ledger);
+          if (result.success) {
+            log(`Migrated project ${proj.id} (${proj.name}) — ${JSON.stringify(result.counts)}`, "neon");
+          } else {
+            log(`Failed to migrate project ${proj.id}: ${result.error}`, "neon");
+          }
+        }
+        log("Neon auto-migration complete", "neon");
+      } else {
+        log("Neon database has existing data — skipping auto-migration", "neon");
+      }
+    } catch (e: any) {
+      log(`Neon auto-migration error: ${e.message}`, "neon");
+    }
+  }
+
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
