@@ -345,6 +345,11 @@ export async function registerRoutes(
       (f.related_items || []).forEach(ref => addEdge(f.finding_id, ref, "related"));
     });
 
+    ledger.domains.forEach(d => {
+      if ((d as any).parent_domain_ref) addEdge(d.domain_id, (d as any).parent_domain_ref, "parent_domain");
+      ((d as any).linked_objects || []).forEach((ref: string) => addEdge(d.domain_id, ref, "linked_object"));
+    });
+
     ledger.gaps.forEach(g => {
       (g.domain_refs || []).forEach(ref => addEdge(g.gap_id, ref, "domain_ref"));
       (g.produced_from_finding_ids || []).forEach(ref => addEdge(g.gap_id, ref, "produced_from"));

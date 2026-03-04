@@ -226,12 +226,32 @@ export async function getRelationships(db: NeonDb, projectId: string): Promise<{
       }
 
       nodeMap.set(elId, { id: elId, type: info.type, title });
+
+      if (info.type === "Domain") {
+        if (r.parentDomainRef) {
+          edges.push({ from: elId, to: r.parentDomainRef, relationship: "parent_domain" });
+        }
+        const extra = r.extra as any;
+        if (extra?.linked_objects && Array.isArray(extra.linked_objects)) {
+          for (const ref of extra.linked_objects) {
+            if (typeof ref === "string" && ref) {
+              edges.push({ from: elId, to: ref, relationship: "linked_object" });
+            }
+          }
+        }
+      }
     }
   }
 
+  const edgeKeys = new Set(edges.map(e => `${e.from}|${e.to}|${e.relationship}`));
+
   const refs = await db.select().from(ns.elementRefs).where(eq(ns.elementRefs.projectId, projectId));
   for (const ref of refs) {
-    edges.push({ from: ref.sourceElementId, to: ref.targetElementId, relationship: ref.refType });
+    const key = `${ref.sourceElementId}|${ref.targetElementId}|${ref.refType}`;
+    if (!edgeKeys.has(key)) {
+      edges.push({ from: ref.sourceElementId, to: ref.targetElementId, relationship: ref.refType });
+      edgeKeys.add(key);
+    }
 
     if (!nodeMap.has(ref.sourceElementId)) {
       nodeMap.set(ref.sourceElementId, { id: ref.sourceElementId, type: "Unknown", title: ref.sourceElementId });

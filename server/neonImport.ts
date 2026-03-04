@@ -68,6 +68,7 @@ const refFieldsToExtract: Record<string, string> = {
   supporting_signal_refs: "supporting_signal",
   supporting_cellcontent_refs: "supporting_cellcontent",
   cell_content_refs: "cell_content_ref",
+  linked_objects: "linked_object",
 };
 
 function extractExtra(element: any, knownSet: Set<string>): Record<string, any> | null {
@@ -99,6 +100,10 @@ function extractRefs(element: any, elementId: string, projectId: string): { sour
 
   if (element.question_id && element.answer_id) {
     refs.push({ sourceElementId: element.answer_id, targetElementId: element.question_id, refType: "answers", projectId });
+  }
+
+  if (element.parent_domain_ref && typeof element.parent_domain_ref === "string") {
+    refs.push({ sourceElementId: elementId, targetElementId: element.parent_domain_ref, refType: "parent_domain", projectId });
   }
 
   return refs;
