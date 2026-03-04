@@ -78,7 +78,7 @@ function TraceTable({ traces }: { traces: Trace[] }) {
               <p className="line-clamp-2">{trace.rationale || (trace as any).description || ""}</p>
             </TableCell>
             <TableCell className="text-center">
-              {trace.interpretation_magnitude !== undefined ? (
+              {trace.interpretation_magnitude != null ? (
                 <span className="text-xs font-mono">{trace.interpretation_magnitude.toFixed(1)}</span>
               ) : (
                 <span className="text-xs text-muted-foreground">--</span>
