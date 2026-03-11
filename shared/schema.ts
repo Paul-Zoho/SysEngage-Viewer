@@ -135,19 +135,25 @@ export interface Requirement {
 
 export interface Risk {
   risk_id: string;
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
   category?: string;
-  likelihood: Severity;
-  impact: Severity;
+  likelihood?: Severity;
+  impact?: Severity;
   exposure?: string;
   mitigation?: string;
   owner?: string;
-  status: string;
+  status?: string;
   related_element_ids?: string[];
   source_refs?: string[];
   domain_refs?: string[];
   confidence: number;
+  risk_description?: string;
+  risk_likelihood?: string;
+  risk_impact?: string;
+  risk_level?: string;
+  mitigation_strategy?: string;
+  linked_elements?: string[];
 }
 
 export interface Issue {

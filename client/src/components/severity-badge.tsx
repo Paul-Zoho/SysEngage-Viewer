@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface SeverityBadgeProps {
-  severity: string;
+  severity: string | null | undefined;
   className?: string;
 }
 
@@ -13,6 +13,7 @@ const severityColors: Record<string, string> = {
 };
 
 export function SeverityBadge({ severity, className }: SeverityBadgeProps) {
+  if (!severity) return <span className="text-xs text-muted-foreground">--</span>;
   return (
     <Badge className={cn("text-[10px] font-medium", severityColors[severity] || "", className)} data-testid={`badge-severity-${severity.toLowerCase()}`}>
       {severity}
@@ -21,7 +22,7 @@ export function SeverityBadge({ severity, className }: SeverityBadgeProps) {
 }
 
 interface StatusBadgeProps {
-  status: string;
+  status: string | null | undefined;
   className?: string;
 }
 
@@ -45,6 +46,7 @@ const statusColors: Record<string, string> = {
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
+  if (!status) return null;
   const label = status.replace(/([A-Z])/g, ' $1').trim();
   return (
     <Badge className={cn("text-[10px] font-medium", statusColors[status] || "bg-secondary text-secondary-foreground", className)} data-testid={`badge-status-${status.toLowerCase()}`}>
