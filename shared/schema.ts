@@ -81,13 +81,18 @@ export interface Finding {
 export interface Gap {
   gap_id: string;
   description: string;
-  impact: string;
-  affected_cells: string[];
-  proposed_resolution: string;
+  impact?: string;
+  affected_cells?: string[];
+  proposed_resolution?: string;
   resolution_state?: string;
-  domain_refs: string[];
-  traceability: string[];
-  produced_from_finding_ids: string[];
+  domain_refs?: string[];
+  traceability?: string[];
+  produced_from_finding_ids?: string[];
+  gap_status?: string;
+  cell_id?: string;
+  suggested_actions?: string[];
+  linked_suggestions?: string[];
+  linked_requirements?: string[];
 }
 
 export interface ZachmanCell {
