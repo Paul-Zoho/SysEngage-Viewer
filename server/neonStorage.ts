@@ -298,9 +298,12 @@ export async function getZachmanGrid(db: NeonDb, projectId: string) {
       .groupBy(ns.cellContentItems.cellId),
   ]);
 
-  const cellMap = new Map<string, typeof cells[0]>();
+  const cellByPos = new Map<string, typeof cells[0]>();
+  const cellIdByPos = new Map<string, string>();
   for (const c of cells) {
-    cellMap.set(c.cellId, c);
+    const posKey = `${c.row || ""}-${(c as any).column || (c as any).col || ""}`;
+    cellByPos.set(posKey, c);
+    cellIdByPos.set(posKey, c.cellId);
   }
 
   const coverageMap = new Map<string, typeof coverageRows>();
@@ -321,8 +324,7 @@ export async function getZachmanGrid(db: NeonDb, projectId: string) {
   for (const row of ROWS) {
     for (const col of COLS) {
       const key = `${row}-${col}`;
-      const canonicalId = `ZC-R${row}-C-${col}`;
-      const cell = cellMap.get(canonicalId);
+      const cell = cellByPos.get(key);
 
       if (!cell) {
         grid[key] = {
@@ -333,9 +335,11 @@ export async function getZachmanGrid(db: NeonDb, projectId: string) {
         continue;
       }
 
+      const actualCellId = cell.cellId;
+
       totalDeclared++;
-      const covItems = coverageMap.get(canonicalId) || [];
-      const contentCount = contentCountMap.get(canonicalId) || 0;
+      const covItems = coverageMap.get(actualCellId) || [];
+      const contentCount = contentCountMap.get(actualCellId) || 0;
 
       let coverageState: string = "NotCovered";
       let bestConfidence: number | null = cell.confidence;
@@ -354,7 +358,7 @@ export async function getZachmanGrid(db: NeonDb, projectId: string) {
       else totalNotCovered++;
 
       grid[key] = {
-        cellId: canonicalId, row, column: col,
+        cellId: actualCellId, row, column: col,
         coverageState,
         confidence: bestConfidence,
         contentCount,

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Grid3X3, Info } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ElementId } from "@/components/element-id";
+import { Link } from "wouter";
 import type { ZachmanGridResponse, ZachmanGridCell, ZachmanCoverageState } from "@shared/schema";
 import { ZACHMAN_ROWS, ZACHMAN_COLUMNS, ZACHMAN_ROW_LABELS } from "@shared/schema";
 
@@ -42,9 +43,19 @@ function CellPopover({ cell }: { cell: ZachmanGridCell }) {
     <PopoverContent className="w-80" data-testid={`popover-cell-${cell.row}-${cell.column}`}>
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold" data-testid={`text-popover-title-${cell.row}-${cell.column}`}>
-            {cell.cellId || `R${cell.row} / ${cell.column}`}
-          </span>
+          {cell.cellId ? (
+            <Link
+              href={`/element/${encodeURIComponent(cell.cellId)}`}
+              className="text-sm font-semibold text-primary hover:underline"
+              data-testid={`link-cell-detail-${cell.row}-${cell.column}`}
+            >
+              {cell.cellId}
+            </Link>
+          ) : (
+            <span className="text-sm font-semibold" data-testid={`text-popover-title-${cell.row}-${cell.column}`}>
+              R{cell.row} / {cell.column}
+            </span>
+          )}
           <Badge variant="outline" className={`text-[10px] ${style.text}`}>
             {style.label}
           </Badge>
@@ -119,11 +130,9 @@ function GridCell({ cell }: { cell: ZachmanGridCell }) {
                   {(cell.confidence * 100).toFixed(0)}%
                 </span>
               )}
-              {cell.contentCount > 0 && (
-                <span className="text-[10px] text-muted-foreground">
-                  {cell.contentCount} item{cell.contentCount !== 1 ? "s" : ""}
-                </span>
-              )}
+              <span className="text-[10px] text-muted-foreground">
+                {cell.contentCount} item{cell.contentCount !== 1 ? "s" : ""}
+              </span>
             </>
           )}
         </button>
