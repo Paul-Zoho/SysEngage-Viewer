@@ -1,4 +1,4 @@
-import { eq, sql, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { CanonicalLedger } from "@shared/schema";
 import * as ns from "../shared/neonSchema";
 
@@ -9,6 +9,8 @@ export interface AppendResult {
   mode: "append";
   newElements: number;
   baselineId: string;
+  baselineCreatedUtc: string;
+  baselineDescription: string;
   counts: Record<string, number>;
   error?: string;
 }
@@ -696,11 +698,11 @@ export async function appendLedgerToNeon(
         extra: { stepCounts: counts, totalNewElements: totalNew },
       });
 
-      return { success: true, mode: "append" as const, newElements: totalNew, baselineId, counts };
+      return { success: true, mode: "append" as const, newElements: totalNew, baselineId, baselineCreatedUtc: nowUtc, baselineDescription: baselineDesc, counts };
     });
   } catch (error: any) {
     console.error("[Neon Append] Error:", error.message);
-    return { success: false, mode: "append" as const, newElements: 0, baselineId, counts, error: error.message };
+    return { success: false, mode: "append" as const, newElements: 0, baselineId, baselineCreatedUtc: nowUtc, baselineDescription: "", counts, error: error.message };
   }
 }
 

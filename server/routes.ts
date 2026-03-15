@@ -287,9 +287,9 @@ export async function registerRoutes(
         const baselineEntry = {
           baseline_id: appendResult.baselineId,
           name: stepLabel,
-          description: `Step "${stepLabel}" added ${appendResult.newElements} new element(s). ${Object.entries(appendResult.counts).filter(([k]) => k !== "element_refs").map(([k, v]) => `${k}: ${v}`).join(", ")}`,
+          description: appendResult.baselineDescription,
           baseline_type: "LedgerStep",
-          created_utc: new Date().toISOString(),
+          created_utc: appendResult.baselineCreatedUtc,
           confidence: 1.0,
         };
         if (!mergedLedger.baselines) (mergedLedger as any).baselines = [];
