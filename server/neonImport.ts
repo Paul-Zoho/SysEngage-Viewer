@@ -677,10 +677,14 @@ export async function appendLedgerToNeon(
           } else {
             itemId = item[spec.idField];
           }
-          if (spec.ledgerKey === "zachman_cells" && itemId) {
+          if (spec.ledgerKey === "zachman_cells") {
             const nRow = normalizeZachmanRow(item.row);
             const nCol = normalizeZachmanColumn(item.column);
-            itemId = normalizeZachmanCellId(itemId, nRow, nCol);
+            if (itemId) {
+              itemId = normalizeZachmanCellId(itemId, nRow, nCol);
+            } else if (nRow && nCol) {
+              itemId = canonicalCellId(nRow, nCol);
+            }
           }
           return itemId;
         };
