@@ -281,15 +281,28 @@ export async function getRegisters(db: NeonDb, projectId: string): Promise<any[]
   return rows.map(rowToSnakeCase);
 }
 
+type ZachmanCellRow = typeof ns.zachmanCells.$inferSelect;
+type CoverageItemRow = typeof ns.coverageItems.$inferSelect;
+
+interface GridCellResult {
+  cellId: string | null;
+  row: string;
+  column: string;
+  coverageState: string;
+  confidence: number | null;
+  contentCount: number;
+  coverageItems: { coverageId: string; coverageState: string | null; confidence: number | null; notes: string | null }[];
+}
+
 export async function getZachmanGrid(db: NeonDb, projectId: string) {
   const ROWS = ["1", "2", "3", "4", "5", "6"];
   const COLS = ["What", "How", "Where", "Who", "When", "Why"];
 
   const [cells, coverageRows, contentRows] = await Promise.all([
     db.select().from(ns.zachmanCells).where(eq(ns.zachmanCells.projectId, projectId)),
-    db.select().from(ns.coverageItems).where(
-      sql`${ns.coverageItems.projectId} = ${projectId} AND ${ns.coverageItems.coverageType} = 'Cell'`
-    ),
+    db.select().from(ns.coverageItems)
+      .where(sql`${ns.coverageItems.projectId} = ${projectId} AND ${ns.coverageItems.coverageType} = 'Cell'`)
+      .orderBy(sql`${ns.coverageItems.id} ASC`),
     db.select({
       cellId: ns.cellContentItems.cellId,
       cnt: sql<number>`count(*)::int`,
@@ -298,19 +311,18 @@ export async function getZachmanGrid(db: NeonDb, projectId: string) {
       .groupBy(ns.cellContentItems.cellId),
   ]);
 
-  const cellByPos = new Map<string, typeof cells[0]>();
-  const cellIdByPos = new Map<string, string>();
+  const cellByPos = new Map<string, ZachmanCellRow>();
   for (const c of cells) {
-    const posKey = `${c.row || ""}-${(c as any).column || (c as any).col || ""}`;
+    const colValue = c.column || "";
+    const posKey = `${c.row || ""}-${colValue}`;
     cellByPos.set(posKey, c);
-    cellIdByPos.set(posKey, c.cellId);
   }
 
-  const coverageMap = new Map<string, typeof coverageRows>();
+  const coverageByTarget = new Map<string, CoverageItemRow[]>();
   for (const cv of coverageRows) {
     const ref = cv.targetRef || "";
-    if (!coverageMap.has(ref)) coverageMap.set(ref, []);
-    coverageMap.get(ref)!.push(cv);
+    if (!coverageByTarget.has(ref)) coverageByTarget.set(ref, []);
+    coverageByTarget.get(ref)!.push(cv);
   }
 
   const contentCountMap = new Map<string, number>();
@@ -318,7 +330,7 @@ export async function getZachmanGrid(db: NeonDb, projectId: string) {
     if (cc.cellId) contentCountMap.set(cc.cellId, cc.cnt);
   }
 
-  const grid: Record<string, any> = {};
+  const grid: Record<string, GridCellResult> = {};
   let totalDeclared = 0, totalCovered = 0, totalPartial = 0, totalNotCovered = 0;
 
   for (const row of ROWS) {
@@ -336,16 +348,15 @@ export async function getZachmanGrid(db: NeonDb, projectId: string) {
       }
 
       const actualCellId = cell.cellId;
-
       totalDeclared++;
-      const covItems = coverageMap.get(actualCellId) || [];
+      const covItems = coverageByTarget.get(actualCellId) || [];
       const contentCount = contentCountMap.get(actualCellId) || 0;
 
       let coverageState: string = "NotCovered";
       let bestConfidence: number | null = cell.confidence;
 
       if (covItems.length > 0) {
-        const latest = covItems.reduce((a, b) => ((a as any).id > (b as any).id ? a : b));
+        const latest = covItems[covItems.length - 1];
         if (latest.coverageState === "Covered") coverageState = "FullyCovered";
         else if (latest.coverageState === "PartiallyCovered") coverageState = "PartiallyCovered";
         else coverageState = "NotCovered";
