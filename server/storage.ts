@@ -140,6 +140,7 @@ export class NeonProjectStorage implements IStorage {
   async initialize(): Promise<void> {
     const existing = await this.db.select({ projectId: nProjects.projectId }).from(nProjects);
     if (existing.length === 0) {
+      console.warn("[storage] n_projects table is empty. If this is a fresh deployment, ensure the migration script (scripts/migrate-projects-to-neon.ts) has been run to transfer existing projects. Seeding a default demo project.");
       const pid = generateProjectId();
       await this.db.insert(nProjects).values({
         projectId: pid,
