@@ -33,7 +33,7 @@ const tableMap: Record<string, { table: any; idColumn: string; type: string; tit
   narrative_summaries: { table: ns.narrativeSummaries, idColumn: "summaryId", type: "NarrativeSummary", titleFields: ["summaryText"] },
   structural_representations: { table: ns.structuralRepresentations, idColumn: "representationId", type: "StructuralRepresentation", titleFields: ["scopeDescription"] },
   control_artefacts: { table: ns.controlArtefacts, idColumn: "artefactId", type: "ControlArtefact", titleFields: ["name", "description"] },
-  signals: { table: ns.signals, idColumn: "signalId", type: "Signal", titleFields: ["signalText", "description"] },
+  signals: { table: ns.signals, idColumn: "signalId", type: "Signal", titleFields: ["observedText", "description"] },
   concerns: { table: ns.concerns, idColumn: "concernId", type: "Concern", titleFields: ["description"] },
   closure_matrices: { table: ns.closureMatrices, idColumn: "matrixId", type: "ClosureMatrix", titleFields: ["description"] },
   baselines: { table: ns.baselines, idColumn: "baselineId", type: "Baseline", titleFields: ["name", "description"] },

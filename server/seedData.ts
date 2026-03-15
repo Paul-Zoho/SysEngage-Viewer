@@ -78,8 +78,8 @@ export function createSeedLedger(): CanonicalLedger {
   ];
 
   const questions = [
-    { question_id: "Q001", question_text: "Are planned maintenance windows excluded from the 99.95% availability calculation?", context: "Ambiguity in SLA Appendix B availability definition", priority: "High", status: "Open", related_gap_ids: [], source_refs: ["S004"], confidence: 0.78 },
-    { question_id: "Q002", question_text: "What is the maximum acceptable recovery time after a hot-swap module replacement?", context: "Not specified in MRD Section 5.1", priority: "Medium", status: "Answered", source_refs: ["S005"], confidence: 0.82 },
+    { question_id: "Q001", question_text: "Are planned maintenance windows excluded from the 99.95% availability calculation?", why_it_matters: "Ambiguity in SLA Appendix B availability definition", priority: "High", status: "Open", related_gap_ids: [], source_refs: ["S004"], confidence: 0.78 },
+    { question_id: "Q002", question_text: "What is the maximum acceptable recovery time after a hot-swap module replacement?", why_it_matters: "Not specified in MRD Section 5.1", priority: "Medium", status: "Answered", source_refs: ["S005"], confidence: 0.82 },
   ];
 
   const answers = [
@@ -175,8 +175,8 @@ export function createSeedLedger(): CanonicalLedger {
   ];
 
   const cellRelationships = [
-    { relationship_id: "CR001", from_cell_id: "ZC_R2_C1", to_cell_id: "ZC_R2_C2", relationship_type: "DataFlow", description: "Sensor data flows to processing functions.", confidence: 0.88 },
-    { relationship_id: "CR002", from_cell_id: "ZC_R2_C2", to_cell_id: "ZC_R2_C3", relationship_type: "Deployment", description: "Functions deployed across network nodes.", confidence: 0.82 },
+    { relationship_id: "CR001", from_ci: "ZC_R2_C1", to_ci: "ZC_R2_C2", relationship_type: "DataFlow", description: "Sensor data flows to processing functions.", confidence: 0.88 },
+    { relationship_id: "CR002", from_ci: "ZC_R2_C2", to_ci: "ZC_R2_C3", relationship_type: "Deployment", description: "Functions deployed across network nodes.", confidence: 0.82 },
   ];
 
   const checklists = [
@@ -196,8 +196,8 @@ export function createSeedLedger(): CanonicalLedger {
   ];
 
   const signals = [
-    { signal_id: "SIG001", signal_type: "Escalation", description: "MIL-STD-1553B qualification delay risk requires program management attention.", source_element_id: "K001", target_element_ids: ["SH001"], priority: "High", confidence: 0.90 },
-    { signal_id: "SIG002", signal_type: "ReviewRequired", description: "Thermal analysis report requires Chief Systems Engineer review before baselining.", source_element_id: "CA002", target_element_ids: ["SH002"], priority: "Medium", confidence: 0.85 },
+    { signal_id: "SIG001", signal_type: "Escalation", observed_text: "MIL-STD-1553B qualification delay risk requires program management attention.", description: "MIL-STD-1553B qualification delay risk requires program management attention.", produced_by_pass_id: "AP001", source_refs: ["K001"], confidence: 0.90 },
+    { signal_id: "SIG002", signal_type: "ReviewRequired", observed_text: "Thermal analysis report requires Chief Systems Engineer review before baselining.", description: "Thermal analysis report requires Chief Systems Engineer review before baselining.", produced_by_pass_id: "AP002", source_refs: ["CA002"], confidence: 0.85 },
   ];
 
   const concerns = [

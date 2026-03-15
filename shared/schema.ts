@@ -171,7 +171,9 @@ export interface Issue {
 export interface Question {
   question_id: string;
   question_text: string;
-  context?: string;
+  why_it_matters: string;
+  expected_answer_format?: string;
+  target_cells?: string[];
   priority?: string;
   status?: string;
   related_gap_ids?: string[];
@@ -341,8 +343,8 @@ export interface CellContentItem {
 
 export interface CellRelationship {
   relationship_id: string;
-  from_cell_id: string;
-  to_cell_id: string;
+  from_ci: string;
+  to_ci: string;
   relationship_type: string;
   description?: string;
   confidence: number;
@@ -380,10 +382,11 @@ export interface ControlArtefact {
 export interface Signal {
   signal_id: string;
   signal_type: string;
+  observed_text: string;
   description: string;
-  source_element_id: string;
-  target_element_ids?: string[];
-  priority?: string;
+  source_refs?: string[];
+  sourceatom_refs?: string[];
+  produced_by_pass_id: string;
   confidence: number;
 }
 

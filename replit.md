@@ -1,7 +1,15 @@
 # SysEngage POC 5 - Systems Engineering Canonical Ledger Tool
 
 ## Overview
-SysEngage is a Systems Engineering tool that implements the Canonical Ledger Specification (v1.0). It provides a structured dashboard for viewing, navigating, and managing SE artifacts across 60+ element types defined in the ledger specification. Supports multi-project workspaces with markdown ledger file upload.
+SysEngage is a Systems Engineering tool that implements the Canonical Ledger Specification (v2.2). It provides a structured dashboard for viewing, navigating, and managing SE artifacts across 60+ element types defined in the ledger specification. Supports multi-project workspaces with markdown ledger file upload.
+
+### Spec v2.2 Alignment (Task #6)
+DB and import layer field names aligned to spec v2.2:
+- **Signal**: `observed_text` (was `signal_text`), `produced_by_pass_id` (was `source_element_id`), `priority` removed from columns (→ extra JSONB). `source_refs` and `sourceatom_refs` extracted via `n_element_refs`.
+- **Question**: `why_it_matters` (was `context`). `target_cells` extracted via `n_element_refs`. `expected_answer_format` in knownFields.
+- **CellRelationship**: `from_ci`/`to_ci` (was `from_cell_id`/`to_cell_id`).
+- **Markdown parser**: `ArtefactStates` and `ConcernCategories` sections now routed correctly.
+- All mapFns include backward-compatible fallbacks (`|| old_field_name`) for v0.5 data.
 
 ## Architecture
 

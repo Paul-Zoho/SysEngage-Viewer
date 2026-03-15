@@ -125,6 +125,8 @@ const SECTION_TO_FIELD: Record<string, string> = {
   ClosureMatrices: "closure_matrices",
   Baselines: "baselines",
   ChangeRecords: "change_records",
+  ArtefactStates: "artefact_states",
+  ConcernCategories: "concern_categories",
 };
 
 function emptyRegister(): Register {

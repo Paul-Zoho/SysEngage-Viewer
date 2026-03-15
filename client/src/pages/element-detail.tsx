@@ -130,7 +130,7 @@ function formatFieldName(key: string): string {
 function ElementAttributeCard({ element, type }: { element: Record<string, any>; type: string }) {
   const entries = Object.entries(element).filter(([key]) => !skipFields.has(key));
   const primaryFields = entries.filter(([key]) =>
-    ["name", "title", "statement", "description", "source_text", "summary", "text", "signal_text",
+    ["name", "title", "statement", "description", "source_text", "summary", "text", "observed_text", "signal_text",
       "meaning_key", "classification_type", "requirement_type", "severity", "priority", "status",
       "resolution_state", "trace_type", "confidence", "domain_id", "source_id", "requirement_id",
       "finding_id", "gap_id", "risk_id", "issue_id", "trace_id", "decision_id", "question_id",
@@ -188,7 +188,7 @@ function RelatedElementRow({ relatedId, edge, batchData, nodeMap, direction }: {
   const element = batchEl?.element;
   const type = batchEl?.type || node?.type || "Unknown";
 
-  const displayTitle = element?.title || element?.name || element?.statement || element?.description || element?.source_text || element?.signal_text || element?.summary || element?.meaning_key || node?.title || "";
+  const displayTitle = element?.title || element?.name || element?.statement || element?.description || element?.source_text || element?.observed_text || element?.signal_text || element?.summary || element?.meaning_key || node?.title || "";
   const displayTitleTrunc = displayTitle.length > 120 ? displayTitle.slice(0, 120) + "..." : displayTitle;
 
   const extraAttrs: [string, any][] = [];

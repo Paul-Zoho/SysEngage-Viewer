@@ -27,7 +27,7 @@ const knownFields: Record<string, Set<string>> = {
   issues: new Set(["issue_id", "title", "description", "severity", "status", "resolution_summary", "owner", "confidence"]),
   traces: new Set(["trace_id", "from_ref", "to_ref", "from_id", "to_id", "trace_type", "rationale", "description", "confidence", "interpretation_magnitude"]),
   decisions: new Set(["decision_id", "title", "description", "decision_type", "status", "rationale", "decided_utc", "confidence"]),
-  questions: new Set(["question_id", "question_text", "context", "priority", "status", "confidence"]),
+  questions: new Set(["question_id", "question_text", "why_it_matters", "expected_answer_format", "priority", "status", "confidence"]),
   answers: new Set(["answer_id", "question_id", "response_text", "provided_by", "provided_utc", "confidence"]),
   assumptions: new Set(["assumption_id", "statement", "scope", "confidence"]),
   constraints: new Set(["constraint_id", "statement", "constraint_type", "rationale", "priority", "confidence"]),
@@ -40,12 +40,12 @@ const knownFields: Record<string, Set<string>> = {
   violations: new Set(["violation_id", "rule_id", "checklist_id", "description", "severity", "produced_by_evaluation_id", "produced_by_pass_id", "confidence"]),
   zachman_cells: new Set(["cell_id", "row", "column", "confidence"]),
   cell_content_items: new Set(["cell_content_item_id", "ci_id", "cell_id", "description", "meaning_key", "classification_type", "confidence"]),
-  cell_relationships: new Set(["relationship_id", "from_cell_id", "to_cell_id", "relationship_type", "description", "confidence"]),
+  cell_relationships: new Set(["relationship_id", "from_ci", "to_ci", "relationship_type", "description", "confidence"]),
   analysis_passes: new Set(["pass_id", "pass_type", "evaluated_scope", "confidence", "coverage_declaration"]),
   narrative_summaries: new Set(["summary_id", "narrative_summary_id", "viewpoint", "scope_description", "summary_text", "confidence"]),
   structural_representations: new Set(["representation_id", "structural_representation_id", "representation_type", "scope_description", "content", "confidence"]),
   control_artefacts: new Set(["artefact_id", "control_artefact_id", "artefact_type", "name", "description", "state", "confidence"]),
-  signals: new Set(["signal_id", "signal_type", "signal_text", "description", "source_element_id", "priority", "confidence"]),
+  signals: new Set(["signal_id", "signal_type", "observed_text", "description", "produced_by_pass_id", "confidence"]),
   concerns: new Set(["concern_id", "description", "concern_category", "raised_by_stakeholder_id", "priority", "status", "confidence"]),
   closure_matrices: new Set(["matrix_id", "matrix_type", "description", "closure_states", "confidence"]),
   baselines: new Set(["baseline_id", "name", "description", "baseline_type", "created_utc", "confidence"]),
@@ -80,6 +80,8 @@ const refFieldsToExtract: Record<string, string> = {
   supporting_cellcontent_refs: "supporting_cellcontent",
   cell_content_refs: "cell_content_ref",
   linked_objects: "linked_object",
+  target_cells: "target_cell",
+  sourceatom_refs: "sourceatom_ref",
 };
 
 function extractExtra(element: any, knownSet: Set<string>): Record<string, any> | null {
@@ -231,7 +233,7 @@ export async function importLedgerToNeon(db: NeonDb, projectId: string, ledger: 
 
     await insertBatch(ns.questions, ledger.questions, "questions", (q: any) => {
       allRefs.push(...extractRefs(q, q.question_id, projectId));
-      return { projectId, questionId: q.question_id, questionText: q.question_text, context: q.context, priority: q.priority, status: q.status, confidence: q.confidence, extra: extractExtra(q, knownFields.questions) };
+      return { projectId, questionId: q.question_id, questionText: q.question_text, whyItMatters: q.why_it_matters || q.context, priority: q.priority, status: q.status, confidence: q.confidence, extra: extractExtra(q, knownFields.questions) };
     });
 
     await insertBatch(ns.answers, ledger.answers, "answers", (a: any) => {
@@ -299,7 +301,7 @@ export async function importLedgerToNeon(db: NeonDb, projectId: string, ledger: 
 
     await insertBatch(ns.cellRelationships, ledger.cell_relationships, "cell_relationships", (c: any) => {
       allRefs.push(...extractRefs(c, c.relationship_id, projectId));
-      return { projectId, relationshipId: c.relationship_id, fromCellId: c.from_cell_id, toCellId: c.to_cell_id, relationshipType: c.relationship_type, description: c.description, confidence: c.confidence, extra: extractExtra(c, knownFields.cell_relationships) };
+      return { projectId, relationshipId: c.relationship_id, fromCi: c.from_ci || c.from_cell_id, toCi: c.to_ci || c.to_cell_id, relationshipType: c.relationship_type, description: c.description, confidence: c.confidence, extra: extractExtra(c, knownFields.cell_relationships) };
     });
 
     await insertBatch(ns.analysisPasses, ledger.analysis_passes, "analysis_passes", (a: any) => {
@@ -327,7 +329,7 @@ export async function importLedgerToNeon(db: NeonDb, projectId: string, ledger: 
 
     await insertBatch(ns.signals, ledger.signals, "signals", (s: any) => {
       allRefs.push(...extractRefs(s, s.signal_id, projectId));
-      return { projectId, signalId: s.signal_id, signalType: s.signal_type, signalText: s.signal_text, description: s.description, sourceElementId: s.source_element_id, priority: s.priority, confidence: s.confidence, extra: extractExtra(s, knownFields.signals) };
+      return { projectId, signalId: s.signal_id, signalType: s.signal_type, observedText: s.observed_text || s.signal_text, description: s.description, producedByPassId: s.produced_by_pass_id, confidence: s.confidence, extra: extractExtra(s, knownFields.signals) };
     });
 
     await insertBatch(ns.concerns, ledger.concerns, "concerns", (c: any) => {
@@ -464,7 +466,7 @@ function buildCollectionSpecs(): CollectionSpec[] {
     { table: ns.decisions, idColumn: "decisionId", ledgerKey: "decisions", idField: "decision_id",
       mapFn: (d, pid) => ({ projectId: pid, decisionId: d.decision_id, title: d.title, description: d.description, decisionType: d.decision_type, status: d.status, rationale: d.rationale, decidedUtc: d.decided_utc, confidence: d.confidence, extra: extractExtra(d, knownFields.decisions) }) },
     { table: ns.questions, idColumn: "questionId", ledgerKey: "questions", idField: "question_id",
-      mapFn: (q, pid) => ({ projectId: pid, questionId: q.question_id, questionText: q.question_text, context: q.context, priority: q.priority, status: q.status, confidence: q.confidence, extra: extractExtra(q, knownFields.questions) }) },
+      mapFn: (q, pid) => ({ projectId: pid, questionId: q.question_id, questionText: q.question_text, whyItMatters: q.why_it_matters || q.context, priority: q.priority, status: q.status, confidence: q.confidence, extra: extractExtra(q, knownFields.questions) }) },
     { table: ns.answers, idColumn: "answerId", ledgerKey: "answers", idField: "answer_id",
       mapFn: (a, pid) => ({ projectId: pid, answerId: a.answer_id, questionId: a.question_id, responseText: a.response_text, providedBy: a.provided_by, providedUtc: a.provided_utc, confidence: a.confidence, extra: extractExtra(a, knownFields.answers) }) },
     { table: ns.assumptions, idColumn: "assumptionId", ledgerKey: "assumptions", idField: "assumption_id",
@@ -496,7 +498,7 @@ function buildCollectionSpecs(): CollectionSpec[] {
         return { projectId: pid, cellContentItemId: cciId, cellId: c.cell_id, description: c.description, meaningKey: c.meaning_key, classificationType: c.classification_type, confidence: c.confidence, extra: extractExtra(c, knownFields.cell_content_items) };
       } },
     { table: ns.cellRelationships, idColumn: "relationshipId", ledgerKey: "cell_relationships", idField: "relationship_id",
-      mapFn: (c, pid) => ({ projectId: pid, relationshipId: c.relationship_id, fromCellId: c.from_cell_id, toCellId: c.to_cell_id, relationshipType: c.relationship_type, description: c.description, confidence: c.confidence, extra: extractExtra(c, knownFields.cell_relationships) }) },
+      mapFn: (c, pid) => ({ projectId: pid, relationshipId: c.relationship_id, fromCi: c.from_ci || c.from_cell_id, toCi: c.to_ci || c.to_cell_id, relationshipType: c.relationship_type, description: c.description, confidence: c.confidence, extra: extractExtra(c, knownFields.cell_relationships) }) },
     { table: ns.analysisPasses, idColumn: "passId", ledgerKey: "analysis_passes", idField: "pass_id",
       mapFn: (a, pid) => ({ projectId: pid, passId: a.pass_id, passType: a.pass_type, evaluatedScope: a.evaluated_scope, confidence: a.confidence, coverageDeclaration: a.coverage_declaration || null, extra: extractExtra(a, knownFields.analysis_passes) }) },
     { table: ns.narrativeSummaries, idColumn: "summaryId", ledgerKey: "narrative_summaries", idField: "summary_id",
@@ -515,7 +517,7 @@ function buildCollectionSpecs(): CollectionSpec[] {
         return { projectId: pid, artefactId: cId, artefactType: c.artefact_type, name: c.name, description: c.description, state: c.state, confidence: c.confidence, extra: extractExtra(c, knownFields.control_artefacts) };
       } },
     { table: ns.signals, idColumn: "signalId", ledgerKey: "signals", idField: "signal_id",
-      mapFn: (s, pid) => ({ projectId: pid, signalId: s.signal_id, signalType: s.signal_type, signalText: s.signal_text, description: s.description, sourceElementId: s.source_element_id, priority: s.priority, confidence: s.confidence, extra: extractExtra(s, knownFields.signals) }) },
+      mapFn: (s, pid) => ({ projectId: pid, signalId: s.signal_id, signalType: s.signal_type, observedText: s.observed_text || s.signal_text, description: s.description, producedByPassId: s.produced_by_pass_id, confidence: s.confidence, extra: extractExtra(s, knownFields.signals) }) },
     { table: ns.concerns, idColumn: "concernId", ledgerKey: "concerns", idField: "concern_id",
       mapFn: (c, pid) => ({ projectId: pid, concernId: c.concern_id, description: c.description, concernCategory: c.concern_category, raisedByStakeholderId: c.raised_by_stakeholder_id, priority: c.priority, status: c.status, confidence: c.confidence, extra: extractExtra(c, knownFields.concerns) }) },
     { table: ns.closureMatrices, idColumn: "matrixId", ledgerKey: "closure_matrices", idField: "matrix_id",
