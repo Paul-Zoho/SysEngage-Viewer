@@ -4,6 +4,8 @@ import { getNeonDb } from "./neonDb";
 import { nProjects } from "../shared/neonSchema";
 import { eq } from "drizzle-orm";
 
+type JsonbValue = Record<string, unknown> | null;
+
 export interface IStorage {
   getLedger(): Promise<CanonicalLedger | null>;
   getLedgerStats(): Promise<LedgerStats>;
@@ -144,7 +146,7 @@ export class NeonProjectStorage implements IStorage {
         name: "Demo Project",
         description: "Default project with sample systems engineering data",
         createdUtc: new Date().toISOString(),
-        ledger: createSeedLedger() as any,
+        ledger: createSeedLedger() as unknown as JsonbValue,
         isActive: true,
       });
     } else {
@@ -163,7 +165,7 @@ export class NeonProjectStorage implements IStorage {
   async getLedger(): Promise<CanonicalLedger | null> {
     const rows = await this.db.select({ ledger: nProjects.ledger }).from(nProjects).where(eq(nProjects.isActive, true)).limit(1);
     if (rows.length === 0 || !rows[0].ledger) return null;
-    return rows[0].ledger as unknown as CanonicalLedger;
+    return rows[0].ledger as CanonicalLedger;
   }
 
   async getLedgerStats(): Promise<LedgerStats> {
@@ -175,7 +177,7 @@ export class NeonProjectStorage implements IStorage {
   async getProjects(): Promise<ProjectSummary[]> {
     const rows = await this.db.select().from(nProjects);
     return rows.map(row => {
-      const ledger = row.ledger as unknown as CanonicalLedger | null;
+      const ledger = row.ledger as CanonicalLedger | null;
       return {
         id: row.projectId,
         name: row.name,
@@ -196,7 +198,7 @@ export class NeonProjectStorage implements IStorage {
       name: row.name,
       description: row.description ?? undefined,
       created_utc: row.createdUtc,
-      ledger: (row.ledger as unknown as CanonicalLedger) ?? null,
+      ledger: (row.ledger as CanonicalLedger) ?? null,
     };
   }
 
@@ -237,7 +239,7 @@ export class NeonProjectStorage implements IStorage {
   async setProjectLedger(id: string, ledger: CanonicalLedger): Promise<boolean> {
     const existing = await this.db.select({ projectId: nProjects.projectId }).from(nProjects).where(eq(nProjects.projectId, id)).limit(1);
     if (existing.length === 0) return false;
-    await this.db.update(nProjects).set({ ledger: ledger as any }).where(eq(nProjects.projectId, id));
+    await this.db.update(nProjects).set({ ledger: ledger as unknown as JsonbValue }).where(eq(nProjects.projectId, id));
     return true;
   }
 
