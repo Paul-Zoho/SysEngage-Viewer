@@ -1,4 +1,4 @@
-import { pgTable, text, real, integer, serial, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, real, integer, serial, jsonb, boolean, index } from "drizzle-orm/pg-core";
 
 export const ledgerInstances = pgTable("ledger_instances", {
   id: serial("id").primaryKey(),
@@ -481,3 +481,13 @@ export const elementRefs = pgTable("n_element_refs", {
   index("idx_ref_target").on(t.targetElementId),
   index("idx_ref_type").on(t.refType),
 ]);
+
+export const nProjects = pgTable("n_projects", {
+  id: serial("id").primaryKey(),
+  projectId: text("project_id").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdUtc: text("created_utc").notNull(),
+  ledger: jsonb("ledger"),
+  isActive: boolean("is_active").notNull().default(false),
+}, (t) => [index("idx_nproj_pid").on(t.projectId)]);

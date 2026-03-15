@@ -15,34 +15,39 @@ SysEngage is a Systems Engineering tool that implements the Canonical Ledger Spe
 
 ### Backend
 - **Server**: Express.js
-- **Storage**: Dual-database architecture:
-  - **Replit PostgreSQL** (DATABASE_URL): Projects table with JSONB ledger blobs — serves as source of truth for project metadata and fallback data source
-  - **Neon PostgreSQL** (NEON_DATABASE_URL): 40 relational tables for all element types — primary data source for queries when available
-- **Database Tables (Replit)**: `projects` table (id, project_id, name, description, created_utc, ledger JSONB, is_active)
-- **Database Tables (Neon)**: `ledger_instances`, 35+ element tables (`n_sources`, `n_requirements`, `n_traces`, etc.), `n_element_refs` (universal cross-reference), `n_registers`
-- **API**: RESTful endpoints under `/api/ledger/*` (active project scoped) and `/api/projects/*` — all collection endpoints try Neon first, fall back to JSONB
+- **Storage**: Single Neon PostgreSQL database (NEON_DATABASE_URL)
+  - `n_projects` table: project metadata + JSONB ledger blobs
+  - 40 relational tables for normalized element data (`n_sources`, `n_requirements`, `n_traces`, etc.)
+  - `n_element_refs`: universal cross-reference table
+  - `n_registers`: register metadata
+- **API**: RESTful endpoints under `/api/ledger/*` (active project scoped) and `/api/projects/*`
+  - Collection endpoints read from normalized Neon tables with JSONB fallback
+  - Project CRUD hits `n_projects` in Neon
 - **Ledger Parser**: `server/ledgerParser.ts` — parses markdown and JSON ledger files into CanonicalLedger objects
-- **Neon Integration**: `server/neonDb.ts` (connection), `server/neonSchema.ts` → `shared/neonSchema.ts` (Drizzle schema), `server/neonImport.ts` (ledger→relational import), `server/neonStorage.ts` (relational query layer)
+- **Neon Integration**: `server/neonDb.ts` (connection, required), `shared/neonSchema.ts` (Drizzle schema), `server/neonImport.ts` (ledger→relational import), `server/neonStorage.ts` (relational query layer)
 - **Running**: Production build via `NODE_ENV=production node dist/index.cjs` for stability; run `npm run build` after code changes
-- **Auto-Migration**: On startup, if Neon is configured but empty, auto-migrates all project ledgers from JSONB to relational tables
 - **Note**: The `process.exit(1)` in `server/vite.ts` is suppressed by an override in `server/index.ts` (dev mode only) to prevent Vite errors from crashing the server
 
 ### Key Files
-- `shared/schema.ts` - TypeScript interfaces for all ledger element types + Project/ProjectSummary types
-- `server/ledgerParser.ts` - Markdown-to-CanonicalLedger parser (handles ## sections, ### elements, yaml blocks)
-- `server/seedData.ts` - Realistic seed data for a defense/avionics system engineering ledger
-- `server/storage.ts` - Storage interface and DatabaseStorage (PostgreSQL) implementation
-- `server/db.ts` - Drizzle ORM database connection (Replit PostgreSQL)
-- `server/neonDb.ts` - Neon PostgreSQL connection manager
-- `shared/neonSchema.ts` - Drizzle schema for 40 relational tables in Neon
+- `shared/schema.ts` - TypeScript interfaces for all ledger element types + Project/ProjectSummary types (no pgTable definitions)
+- `shared/neonSchema.ts` - Drizzle schema for all tables including `n_projects` and 40 relational element tables
+- `server/storage.ts` - IStorage interface and NeonProjectStorage class (reads/writes `n_projects` in Neon)
+- `server/neonDb.ts` - Neon PostgreSQL connection manager (NEON_DATABASE_URL required)
 - `server/neonImport.ts` - Imports CanonicalLedger into Neon relational tables
 - `server/neonStorage.ts` - Query layer for Neon relational tables
-- `drizzle-neon.config.ts` - Drizzle Kit config for Neon schema push
-- `server/routes.ts` - API routes with Neon-first, JSONB-fallback pattern
+- `server/ledgerParser.ts` - Markdown-to-CanonicalLedger parser (handles ## sections, ### elements, yaml blocks)
+- `server/seedData.ts` - Realistic seed data for a defense/avionics system engineering ledger
+- `server/routes.ts` - API routes
+- `drizzle-neon.config.ts` - Drizzle Kit config for Neon schema push (permanent admin utility)
+- `drizzle.config.ts` - Also points to Neon (same as drizzle-neon.config.ts)
 - `client/src/App.tsx` - Root component with sidebar layout and routing
 - `client/src/components/app-sidebar.tsx` - Navigation sidebar with project selector dropdown
 - `client/src/pages/projects.tsx` - Project management page (create, upload, select, delete)
 - `client/src/pages/` - Page components for each view
+
+### Environment
+- **Required Secret**: `NEON_DATABASE_URL` — sole database connection (Neon PostgreSQL)
+- **No longer used**: `DATABASE_URL` (Replit PostgreSQL) — removed in consolidation
 
 ### Multi-Project System
 - Projects contain a name, description, and an optional CanonicalLedger
@@ -136,4 +141,4 @@ Key components:
 - `GET /api/ledger/elements/batch?ids=...` - Batch element lookup
 - `GET /api/ledger/sources|requirements|...` - Individual collections
 - `GET /api/neon/status` - Neon connection status, has-data checks
-- `POST /api/neon/migrate` - Force migrate all projects from JSONB to Neon
+- `POST /api/neon/migrate` - Force re-import all project ledgers into Neon relational tables

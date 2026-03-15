@@ -9,16 +9,13 @@ export function getNeonDb() {
   if (neonDb) return neonDb;
 
   const url = process.env.NEON_DATABASE_URL;
-  if (!url) return null;
-
-  try {
-    neonPool = new Pool({ connectionString: url, ssl: { rejectUnauthorized: false }, max: 5 });
-    neonDb = drizzle(neonPool, { schema: neonSchema });
-    return neonDb;
-  } catch {
-    console.error("[Neon] Failed to create connection pool");
-    return null;
+  if (!url) {
+    throw new Error("NEON_DATABASE_URL must be set. This is the sole database connection.");
   }
+
+  neonPool = new Pool({ connectionString: url, ssl: { rejectUnauthorized: false }, max: 5 });
+  neonDb = drizzle(neonPool, { schema: neonSchema });
+  return neonDb;
 }
 
 export async function testNeonConnection(): Promise<boolean> {

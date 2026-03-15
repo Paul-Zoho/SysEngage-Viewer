@@ -1,6 +1,4 @@
 import { z } from "zod";
-import { pgTable, serial, text, boolean, jsonb } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 
 export const severityEnum = z.enum(["High", "Medium", "Low"]);
 export type Severity = z.infer<typeof severityEnum>;
@@ -583,19 +581,3 @@ export interface ProjectSummary {
   hasLedger: boolean;
 }
 
-export const projects = pgTable("projects", {
-  id: serial("id").primaryKey(),
-  projectId: text("project_id").notNull().unique(),
-  name: text("name").notNull(),
-  description: text("description"),
-  createdUtc: text("created_utc").notNull(),
-  ledger: jsonb("ledger"),
-  isActive: boolean("is_active").notNull().default(false),
-});
-
-export const insertDbProjectSchema = createInsertSchema(projects).omit({
-  id: true,
-});
-
-export type InsertDbProject = z.infer<typeof insertDbProjectSchema>;
-export type SelectDbProject = typeof projects.$inferSelect;

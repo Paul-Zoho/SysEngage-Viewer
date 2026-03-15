@@ -1,7 +1,7 @@
 import type { CanonicalLedger, LedgerStats, Project, ProjectSummary } from "@shared/schema";
-import { projects } from "@shared/schema";
 import { createSeedLedger } from "./seedData";
-import { db } from "./db";
+import { getNeonDb } from "./neonDb";
+import { nProjects } from "../shared/neonSchema";
 import { eq } from "drizzle-orm";
 
 export interface IStorage {
@@ -17,7 +17,7 @@ export interface IStorage {
   initialize(): Promise<void>;
 }
 
-function computeElementCount(ledger: CanonicalLedger): number {
+export function computeElementCount(ledger: CanonicalLedger): number {
   return ledger.sources.length + ledger.findings.length + ledger.gaps.length +
     ledger.requirements.length + ledger.risks.length + ledger.issues.length + ledger.traces.length +
     ledger.decisions.length + ledger.domains.length + ledger.questions.length + ledger.answers.length +
@@ -34,7 +34,7 @@ function computeElementCount(ledger: CanonicalLedger): number {
     ledger.change_records.length;
 }
 
-function computeLedgerStats(l: CanonicalLedger): LedgerStats {
+export function computeLedgerStats(l: CanonicalLedger): LedgerStats {
   const coverageCounts = { covered: 0, partial: 0, notCovered: 0, unknown: 0 };
   l.coverage_items.forEach(c => {
     if (c.coverage_state === "Covered") coverageCounts.covered++;
@@ -130,12 +130,16 @@ function generateProjectId(): string {
   return `proj_${nextProjectNum++}`;
 }
 
-export class DatabaseStorage implements IStorage {
+export class NeonProjectStorage implements IStorage {
+  private get db() {
+    return getNeonDb();
+  }
+
   async initialize(): Promise<void> {
-    const existing = await db.select({ projectId: projects.projectId }).from(projects);
+    const existing = await this.db.select({ projectId: nProjects.projectId }).from(nProjects);
     if (existing.length === 0) {
       const pid = generateProjectId();
-      await db.insert(projects).values({
+      await this.db.insert(nProjects).values({
         projectId: pid,
         name: "Demo Project",
         description: "Default project with sample systems engineering data",
@@ -149,15 +153,15 @@ export class DatabaseStorage implements IStorage {
         return match ? Math.max(max, parseInt(match[1], 10)) : max;
       }, 0);
       nextProjectNum = maxNum + 1;
-      const activeRows = await db.select({ projectId: projects.projectId }).from(projects).where(eq(projects.isActive, true)).limit(1);
+      const activeRows = await this.db.select({ projectId: nProjects.projectId }).from(nProjects).where(eq(nProjects.isActive, true)).limit(1);
       if (activeRows.length === 0) {
-        await db.update(projects).set({ isActive: true }).where(eq(projects.projectId, existing[0].projectId));
+        await this.db.update(nProjects).set({ isActive: true }).where(eq(nProjects.projectId, existing[0].projectId));
       }
     }
   }
 
   async getLedger(): Promise<CanonicalLedger | null> {
-    const rows = await db.select({ ledger: projects.ledger }).from(projects).where(eq(projects.isActive, true)).limit(1);
+    const rows = await this.db.select({ ledger: nProjects.ledger }).from(nProjects).where(eq(nProjects.isActive, true)).limit(1);
     if (rows.length === 0 || !rows[0].ledger) return null;
     return rows[0].ledger as unknown as CanonicalLedger;
   }
@@ -169,7 +173,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProjects(): Promise<ProjectSummary[]> {
-    const rows = await db.select().from(projects);
+    const rows = await this.db.select().from(nProjects);
     return rows.map(row => {
       const ledger = row.ledger as unknown as CanonicalLedger | null;
       return {
@@ -184,7 +188,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getProject(id: string): Promise<Project | undefined> {
-    const rows = await db.select().from(projects).where(eq(projects.projectId, id)).limit(1);
+    const rows = await this.db.select().from(nProjects).where(eq(nProjects.projectId, id)).limit(1);
     if (rows.length === 0) return undefined;
     const row = rows[0];
     return {
@@ -199,7 +203,7 @@ export class DatabaseStorage implements IStorage {
   async createProject(name: string, description?: string): Promise<Project> {
     const pid = generateProjectId();
     const createdUtc = new Date().toISOString();
-    await db.insert(projects).values({
+    await this.db.insert(nProjects).values({
       projectId: pid,
       name,
       description: description ?? null,
@@ -217,39 +221,39 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProject(id: string): Promise<boolean> {
-    const rows = await db.select({ projectId: projects.projectId, isActive: projects.isActive }).from(projects).where(eq(projects.projectId, id)).limit(1);
+    const rows = await this.db.select({ projectId: nProjects.projectId, isActive: nProjects.isActive }).from(nProjects).where(eq(nProjects.projectId, id)).limit(1);
     if (rows.length === 0) return false;
     const wasActive = rows[0].isActive;
-    await db.delete(projects).where(eq(projects.projectId, id));
+    await this.db.delete(nProjects).where(eq(nProjects.projectId, id));
     if (wasActive) {
-      const remaining = await db.select({ projectId: projects.projectId }).from(projects).limit(1);
+      const remaining = await this.db.select({ projectId: nProjects.projectId }).from(nProjects).limit(1);
       if (remaining.length > 0) {
-        await db.update(projects).set({ isActive: true }).where(eq(projects.projectId, remaining[0].projectId));
+        await this.db.update(nProjects).set({ isActive: true }).where(eq(nProjects.projectId, remaining[0].projectId));
       }
     }
     return true;
   }
 
   async setProjectLedger(id: string, ledger: CanonicalLedger): Promise<boolean> {
-    const existing = await db.select({ projectId: projects.projectId }).from(projects).where(eq(projects.projectId, id)).limit(1);
+    const existing = await this.db.select({ projectId: nProjects.projectId }).from(nProjects).where(eq(nProjects.projectId, id)).limit(1);
     if (existing.length === 0) return false;
-    await db.update(projects).set({ ledger: ledger as any }).where(eq(projects.projectId, id));
+    await this.db.update(nProjects).set({ ledger: ledger as any }).where(eq(nProjects.projectId, id));
     return true;
   }
 
   async getActiveProjectId(): Promise<string> {
-    const rows = await db.select({ projectId: projects.projectId }).from(projects).where(eq(projects.isActive, true)).limit(1);
+    const rows = await this.db.select({ projectId: nProjects.projectId }).from(nProjects).where(eq(nProjects.isActive, true)).limit(1);
     if (rows.length === 0) return "";
     return rows[0].projectId;
   }
 
   async setActiveProjectId(id: string): Promise<boolean> {
-    const rows = await db.select({ projectId: projects.projectId }).from(projects).where(eq(projects.projectId, id)).limit(1);
+    const rows = await this.db.select({ projectId: nProjects.projectId }).from(nProjects).where(eq(nProjects.projectId, id)).limit(1);
     if (rows.length === 0) return false;
-    await db.update(projects).set({ isActive: false }).where(eq(projects.isActive, true));
-    await db.update(projects).set({ isActive: true }).where(eq(projects.projectId, id));
+    await this.db.update(nProjects).set({ isActive: false }).where(eq(nProjects.isActive, true));
+    await this.db.update(nProjects).set({ isActive: true }).where(eq(nProjects.projectId, id));
     return true;
   }
 }
 
-export const storage = new DatabaseStorage();
+export const storage = new NeonProjectStorage();
