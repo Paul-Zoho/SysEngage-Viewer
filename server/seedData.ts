@@ -39,10 +39,10 @@ export function createSeedLedger(): CanonicalLedger {
   ];
 
   const gaps = [
-    { gap_id: "G001", description: "Missing error injection test cases for MIL-STD-1553B protocol compliance validation.", impact: "High - May delay interface qualification milestone", affected_cells: ["ZC_R2_C2"], proposed_resolution: "Develop comprehensive error injection test suite covering all specified fault conditions.", resolution_state: "Open", domain_refs: ["D005"], traceability: ["T001"], produced_from_finding_ids: ["F001"] },
-    { gap_id: "G002", description: "Thermal model incomplete for PDU high-load scenarios - missing convection coefficients.", impact: "Medium - Could result in thermal derating requirements", affected_cells: ["ZC_R2_C3"], proposed_resolution: "Commission CFD analysis for PDU bay thermal environment characterization.", resolution_state: "Open", domain_refs: ["D003"], traceability: ["T002"], produced_from_finding_ids: ["F002"] },
-    { gap_id: "G003", description: "GPS-denied navigation test environment not established.", impact: "High - Blocks navigation subsystem verification", affected_cells: ["ZC_R2_C1"], proposed_resolution: "Establish HITL simulation environment with GPS signal denial capability.", resolution_state: "Accepted", domain_refs: ["D001"], traceability: ["T003"], produced_from_finding_ids: ["F003"] },
-    { gap_id: "G004", description: "DO-178C tool qualification evidence package incomplete.", impact: "High - Certification risk for safety-critical software", affected_cells: ["ZC_R3_C4"], proposed_resolution: "Initiate tool qualification project per DO-330 guidelines.", resolution_state: "Open", domain_refs: ["D004"], traceability: ["T004"], produced_from_finding_ids: ["F004"] },
+    { gap_id: "G001", description: "Missing error injection test cases for MIL-STD-1553B protocol compliance validation.", impact: "High - May delay interface qualification milestone", affected_cells: ["ZC-R2-C-How"], proposed_resolution: "Develop comprehensive error injection test suite covering all specified fault conditions.", resolution_state: "Open", domain_refs: ["D005"], traceability: ["T001"], produced_from_finding_ids: ["F001"] },
+    { gap_id: "G002", description: "Thermal model incomplete for PDU high-load scenarios - missing convection coefficients.", impact: "Medium - Could result in thermal derating requirements", affected_cells: ["ZC-R2-C-Where"], proposed_resolution: "Commission CFD analysis for PDU bay thermal environment characterization.", resolution_state: "Open", domain_refs: ["D003"], traceability: ["T002"], produced_from_finding_ids: ["F002"] },
+    { gap_id: "G003", description: "GPS-denied navigation test environment not established.", impact: "High - Blocks navigation subsystem verification", affected_cells: ["ZC-R2-C-What"], proposed_resolution: "Establish HITL simulation environment with GPS signal denial capability.", resolution_state: "Accepted", domain_refs: ["D001"], traceability: ["T003"], produced_from_finding_ids: ["F003"] },
+    { gap_id: "G004", description: "DO-178C tool qualification evidence package incomplete.", impact: "High - Certification risk for safety-critical software", affected_cells: ["ZC-R3-C-Who"], proposed_resolution: "Initiate tool qualification project per DO-330 guidelines.", resolution_state: "Open", domain_refs: ["D004"], traceability: ["T004"], produced_from_finding_ids: ["F004"] },
   ];
 
   const traces = [
@@ -97,12 +97,12 @@ export function createSeedLedger(): CanonicalLedger {
   ];
 
   const zachmanCells = [
-    { cell_id: "ZC_R2_C1", row: "Row 2 - System Model", column: "What (Data)", obligation_rules_ref: ["RL001"] },
-    { cell_id: "ZC_R2_C2", row: "Row 2 - System Model", column: "How (Function)", obligation_rules_ref: ["RL001", "RL002"] },
-    { cell_id: "ZC_R2_C3", row: "Row 2 - System Model", column: "Where (Network)", obligation_rules_ref: ["RL002"] },
-    { cell_id: "ZC_R3_C4", row: "Row 3 - Technology Model", column: "Who (People)", obligation_rules_ref: ["RL001"] },
-    { cell_id: "ZC_R1_C1", row: "Row 1 - Scope", column: "What (Data)", obligation_rules_ref: ["RL001"] },
-    { cell_id: "ZC_R1_C2", row: "Row 1 - Scope", column: "How (Function)", obligation_rules_ref: ["RL002"] },
+    { cell_id: "ZC-R2-C-What", row: "2", column: "What", obligation_rules_ref: ["RL001"] },
+    { cell_id: "ZC-R2-C-How", row: "2", column: "How", obligation_rules_ref: ["RL001", "RL002"] },
+    { cell_id: "ZC-R2-C-Where", row: "2", column: "Where", obligation_rules_ref: ["RL002"] },
+    { cell_id: "ZC-R3-C-Who", row: "3", column: "Who", obligation_rules_ref: ["RL001"] },
+    { cell_id: "ZC-R1-C-What", row: "1", column: "What", obligation_rules_ref: ["RL001"] },
+    { cell_id: "ZC-R1-C-How", row: "1", column: "How", obligation_rules_ref: ["RL002"] },
   ];
 
   const rules = [
@@ -125,7 +125,7 @@ export function createSeedLedger(): CanonicalLedger {
     { coverage_id: "CV002", coverage_type: "Requirement", target_id: "R002", coverage_state: "PartiallyCovered", produced_by_pass_id: "P001", notes: "Nominal protocol compliance covered; error injection scenarios pending.", confidence: 0.85 },
     { coverage_id: "CV003", coverage_type: "Requirement", target_id: "R003", coverage_state: "Covered", produced_by_pass_id: "P001", confidence: 0.94 },
     { coverage_id: "CV004", coverage_type: "Requirement", target_id: "R007", coverage_state: "NotCovered", produced_by_pass_id: "P002", notes: "No test environment established for GPS-denied testing.", confidence: 0.90 },
-    { coverage_id: "CV005", coverage_type: "Cell", target_id: "ZC_R2_C1", coverage_state: "PartiallyCovered", produced_by_pass_id: "P002", confidence: 0.78 },
+    { coverage_id: "CV005", coverage_type: "Cell", target_id: "ZC-R2-C-What", coverage_state: "PartiallyCovered", produced_by_pass_id: "P002", confidence: 0.78 },
     { coverage_id: "CV006", coverage_type: "Domain", target_id: "D004", coverage_state: "PartiallyCovered", produced_by_pass_id: "P002", notes: "Tool qualification incomplete for software domain.", confidence: 0.80 },
   ];
 
@@ -169,14 +169,14 @@ export function createSeedLedger(): CanonicalLedger {
   ];
 
   const cellContentItems = [
-    { content_item_id: "CCI001", cell_id: "ZC_R2_C1", element_id: "R001", element_type: "Requirement", relevance_score: 0.95, confidence: 0.90 },
-    { content_item_id: "CCI002", cell_id: "ZC_R2_C1", element_id: "R007", element_type: "Requirement", relevance_score: 0.88, confidence: 0.85 },
-    { content_item_id: "CCI003", cell_id: "ZC_R2_C2", element_id: "R002", element_type: "Requirement", relevance_score: 0.92, confidence: 0.91 },
+    { content_item_id: "CCI001", cell_id: "ZC-R2-C-What", element_id: "R001", element_type: "Requirement", relevance_score: 0.95, confidence: 0.90 },
+    { content_item_id: "CCI002", cell_id: "ZC-R2-C-What", element_id: "R007", element_type: "Requirement", relevance_score: 0.88, confidence: 0.85 },
+    { content_item_id: "CCI003", cell_id: "ZC-R2-C-How", element_id: "R002", element_type: "Requirement", relevance_score: 0.92, confidence: 0.91 },
   ];
 
   const cellRelationships = [
-    { relationship_id: "CR001", from_ci: "ZC_R2_C1", to_ci: "ZC_R2_C2", relationship_type: "DataFlow", description: "Sensor data flows to processing functions.", confidence: 0.88 },
-    { relationship_id: "CR002", from_ci: "ZC_R2_C2", to_ci: "ZC_R2_C3", relationship_type: "Deployment", description: "Functions deployed across network nodes.", confidence: 0.82 },
+    { relationship_id: "CR001", from_ci: "ZC-R2-C-What", to_ci: "ZC-R2-C-How", relationship_type: "DataFlow", description: "Sensor data flows to processing functions.", confidence: 0.88 },
+    { relationship_id: "CR002", from_ci: "ZC-R2-C-How", to_ci: "ZC-R2-C-Where", relationship_type: "Deployment", description: "Functions deployed across network nodes.", confidence: 0.82 },
   ];
 
   const checklists = [
@@ -231,7 +231,7 @@ export function createSeedLedger(): CanonicalLedger {
     ledger_id: "LEDGER-POC5-001",
     version: "v1.0",
     created_utc: new Date().toISOString(),
-    row_target: "Row 2 - System Model",
+    row_target: "2",
     sources,
     source_register: mkRegister("REG-SRC", "Source", sources.map(s => s.source_id), "This register SHALL contain the identifiers of ALL Source elements present in the ledger."),
     findings,

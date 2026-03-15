@@ -4,6 +4,69 @@ import * as ns from "../shared/neonSchema";
 
 type NeonDb = ReturnType<typeof import("drizzle-orm/node-postgres").drizzle>;
 
+const ROW_ALIASES: Record<string, string> = {
+  "1": "1", "2": "2", "3": "3", "4": "4", "5": "5", "6": "6",
+  "row 1": "1", "row 2": "2", "row 3": "3", "row 4": "4", "row 5": "5", "row 6": "6",
+  "row1": "1", "row2": "2", "row3": "3", "row4": "4", "row5": "5", "row6": "6",
+  "contextual": "1", "planner": "1", "scope": "1",
+  "conceptual": "2", "owner": "2", "business concept": "2", "business": "2",
+  "logical": "3", "designer": "3", "system logic": "3", "system": "3",
+  "physical": "4", "builder": "4", "technology physics": "4", "technology": "4",
+  "detailed": "5", "programmer": "5", "component assembly": "5", "component": "5",
+  "operational": "6", "user": "6", "enterprise": "6",
+};
+
+export function normalizeZachmanRow(raw: string | undefined | null): string {
+  if (!raw) return "";
+  const s = String(raw).trim();
+  const lower = s.toLowerCase();
+  if (ROW_ALIASES[lower]) return ROW_ALIASES[lower];
+  const numMatch = lower.match(/row\s*(\d)/);
+  if (numMatch && numMatch[1] >= "1" && numMatch[1] <= "6") return numMatch[1];
+  const digitOnly = s.match(/^(\d)$/);
+  if (digitOnly) return digitOnly[1];
+  return s;
+}
+
+const COL_ALIASES: Record<string, string> = {
+  "what": "What", "how": "How", "where": "Where", "who": "Who", "when": "When", "why": "Why",
+  "data": "What", "information": "What",
+  "function": "How", "process": "How",
+  "network": "Where", "location": "Where",
+  "people": "Who", "organisation": "Who", "organization": "Who",
+  "time": "When", "schedule": "When",
+  "motivation": "Why", "goal": "Why",
+};
+
+export function normalizeZachmanColumn(raw: string | undefined | null): string {
+  if (!raw) return "";
+  const s = String(raw).trim();
+  const lower = s.toLowerCase();
+  if (COL_ALIASES[lower]) return COL_ALIASES[lower];
+  const paren = lower.match(/^(what|how|where|who|when|why)\s*\(/);
+  if (paren) return COL_ALIASES[paren[1]] || paren[1];
+  const bare = lower.replace(/[^a-z]/g, "");
+  if (COL_ALIASES[bare]) return COL_ALIASES[bare];
+  return s;
+}
+
+const ZC_V23_PATTERN = /^ZC-R[1-6]-C-(What|How|Where|Who|When|Why)$/;
+
+export function canonicalCellId(row: string, column: string): string {
+  return `ZC-R${row}-C-${column}`;
+}
+
+function normalizeZachmanCellId(raw: string, row: string, col: string): string {
+  if (ZC_V23_PATTERN.test(raw)) return raw;
+  return canonicalCellId(row, col);
+}
+
+function normalizeRowTarget(raw: any): string | string[] | null {
+  if (!raw) return null;
+  if (Array.isArray(raw)) return raw.map((r: any) => normalizeZachmanRow(String(r)));
+  return normalizeZachmanRow(String(raw));
+}
+
 export interface AppendResult {
   success: boolean;
   mode: "append";
@@ -38,7 +101,7 @@ const knownFields: Record<string, Set<string>> = {
   rules: new Set(["rule_id", "name", "description", "rule_type", "severity_default", "version", "confidence"]),
   evaluations: new Set(["evaluation_id", "evaluation_type", "scope_description", "confidence"]),
   violations: new Set(["violation_id", "rule_id", "checklist_id", "description", "severity", "produced_by_evaluation_id", "produced_by_pass_id", "confidence"]),
-  zachman_cells: new Set(["cell_id", "row", "column", "confidence"]),
+  zachman_cells: new Set(["cell_id", "row", "column", "confidence", "obligation_rules_ref"]),
   cell_content_items: new Set(["cell_content_item_id", "ci_id", "cell_id", "description", "meaning_key", "classification_type", "confidence"]),
   cell_relationships: new Set(["relationship_id", "from_ci", "to_ci", "relationship_type", "description", "confidence"]),
   analysis_passes: new Set(["pass_id", "pass_type", "evaluated_scope", "confidence", "coverage_declaration"]),
@@ -149,7 +212,7 @@ export async function importLedgerToNeon(db: NeonDb, projectId: string, ledger: 
       version: ledger.version || (ledger as any).sysengage_ledger_version,
       runId: (ledger as any).run_id,
       schemaId: (ledger as any).schema_id,
-      rowTarget: (ledger as any).row_target,
+      rowTarget: normalizeRowTarget((ledger as any).row_target),
       createdUtc: ledger.created_utc,
       generator: (ledger as any).generator || null,
     });
@@ -288,8 +351,11 @@ export async function importLedgerToNeon(db: NeonDb, projectId: string, ledger: 
     });
 
     await insertBatch(ns.zachmanCells, ledger.zachman_cells, "zachman_cells", (z: any) => {
-      allRefs.push(...extractRefs(z, z.cell_id, projectId));
-      return { projectId, cellId: z.cell_id, row: z.row, column: z.column, confidence: z.confidence || null, extra: extractExtra(z, knownFields.zachman_cells) };
+      const nRow = normalizeZachmanRow(z.row);
+      const nCol = normalizeZachmanColumn(z.column);
+      const nCellId = normalizeZachmanCellId(z.cell_id, nRow, nCol);
+      allRefs.push(...extractRefs(z, nCellId, projectId));
+      return { projectId, cellId: nCellId, row: nRow, column: nCol, confidence: z.confidence || null, extra: extractExtra(z, knownFields.zachman_cells) };
     });
 
     const validCCI = (ledger.cell_content_items || []).filter((c: any) => c.cell_content_item_id || c.ci_id || c.id);
@@ -491,7 +557,12 @@ function buildCollectionSpecs(): CollectionSpec[] {
     { table: ns.violations, idColumn: "violationId", ledgerKey: "violations", idField: "violation_id",
       mapFn: (v, pid) => ({ projectId: pid, violationId: v.violation_id, ruleId: v.rule_id, checklistId: v.checklist_id, description: v.description, severity: v.severity, producedByEvaluationId: v.produced_by_evaluation_id, producedByPassId: v.produced_by_pass_id, confidence: v.confidence, extra: extractExtra(v, knownFields.violations) }) },
     { table: ns.zachmanCells, idColumn: "cellId", ledgerKey: "zachman_cells", idField: "cell_id",
-      mapFn: (z, pid) => ({ projectId: pid, cellId: z.cell_id, row: z.row, column: z.column, confidence: z.confidence || null, extra: extractExtra(z, knownFields.zachman_cells) }) },
+      mapFn: (z, pid) => {
+        const nRow = normalizeZachmanRow(z.row);
+        const nCol = normalizeZachmanColumn(z.column);
+        const nCellId = normalizeZachmanCellId(z.cell_id, nRow, nCol);
+        return { projectId: pid, cellId: nCellId, row: nRow, column: nCol, confidence: z.confidence || null, extra: extractExtra(z, knownFields.zachman_cells) };
+      } },
     { table: ns.cellContentItems, idColumn: "cellContentItemId", ledgerKey: "cell_content_items", idField: "cell_content_item_id",
       mapFn: (c, pid) => {
         const cciId = c.cell_content_item_id || c.ci_id || c.id;
