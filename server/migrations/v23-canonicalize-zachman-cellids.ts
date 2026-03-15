@@ -1,7 +1,5 @@
 import pg from "pg";
 
-const OLD_TO_NEW: Record<string, (row: string, col: string) => string> = {};
-
 function canonicalCellId(row: string, col: string): string {
   return `ZC-R${row}-C-${col}`;
 }
@@ -31,6 +29,7 @@ export async function migrateZachmanCellIds() {
       await client.query("UPDATE n_coverage_items SET target_ref = $1 WHERE target_ref = $2 AND coverage_type = 'Cell'", [newId, oldId]);
       await client.query("UPDATE n_cell_relationships SET from_ci = $1 WHERE from_ci = $2", [newId, oldId]);
       await client.query("UPDATE n_cell_relationships SET to_ci = $1 WHERE to_ci = $2", [newId, oldId]);
+      await client.query("UPDATE n_cell_content_items SET cell_id = $1 WHERE cell_id = $2", [newId, oldId]);
 
       console.log(`[v2.3 migration] ${oldId} -> ${newId}`);
     }
@@ -39,7 +38,10 @@ export async function migrateZachmanCellIds() {
     console.log("[v2.3 migration] Committed successfully");
 
     const verify = await client.query("SELECT DISTINCT cell_id FROM n_zachman_cells ORDER BY cell_id");
-    console.log("[v2.3 migration] Verified cell_ids:", verify.rows.map((r: any) => r.cell_id));
+    console.log("[v2.3 migration] Verified zachman cell_ids:", verify.rows.map((r: any) => r.cell_id));
+
+    const verifyCCI = await client.query("SELECT DISTINCT cell_id FROM n_cell_content_items ORDER BY cell_id");
+    console.log("[v2.3 migration] Verified content item cell_ids:", verifyCCI.rows.map((r: any) => r.cell_id));
   } catch (error: any) {
     console.error("[v2.3 migration] ERROR:", error.message);
     try { await client.query("ROLLBACK"); } catch (e) {}
