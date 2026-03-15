@@ -15,8 +15,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertProjectSchema, type InsertProject, type ProjectSummary } from "@shared/schema";
-import { Plus, Upload, Trash2, CheckCircle, FolderOpen, FolderKanban, Loader2, Calendar, Hash, AlertTriangle } from "lucide-react";
+import { Plus, Upload, Trash2, CheckCircle, FolderOpen, FolderKanban, Loader2, Calendar, Hash, AlertTriangle, Download, GitBranch } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 interface ParseWarning {
   section: string;
@@ -27,6 +29,10 @@ interface UploadResult {
   projectName: string;
   elementCount: number;
   warnings?: ParseWarning[];
+  mode?: "replace" | "append";
+  newElements?: number;
+  baselineId?: string;
+  counts?: Record<string, number>;
 }
 
 export default function Projects() {
@@ -202,16 +208,45 @@ export default function Projects() {
           <DialogHeader>
             <DialogTitle>Upload Complete</DialogTitle>
             <DialogDescription>
-              Ledger data has been parsed and loaded into "{uploadResult?.projectName}".
+              {uploadResult?.mode === "append"
+                ? `Ledger step appended to "${uploadResult?.projectName}".`
+                : `Ledger data has been parsed and loaded into "${uploadResult?.projectName}".`}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Hash className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium" data-testid="text-upload-element-count">
-                {uploadResult?.elementCount} elements parsed
-              </span>
-            </div>
+            {uploadResult?.mode === "append" ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <Hash className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium" data-testid="text-upload-new-elements">
+                    {uploadResult.newElements} new element{uploadResult.newElements !== 1 ? "s" : ""} added
+                  </span>
+                </div>
+                {uploadResult.baselineId && (
+                  <div className="text-xs text-muted-foreground font-mono bg-muted rounded-md px-2 py-1" data-testid="text-baseline-id">
+                    Baseline: {uploadResult.baselineId}
+                  </div>
+                )}
+                {uploadResult.counts && Object.keys(uploadResult.counts).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(uploadResult.counts)
+                      .filter(([key]) => key !== "element_refs")
+                      .map(([key, count]) => (
+                        <Badge key={key} variant="outline" className="text-[10px] font-mono">
+                          {key}: {count}
+                        </Badge>
+                      ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Hash className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium" data-testid="text-upload-element-count">
+                  {uploadResult?.elementCount} elements parsed
+                </span>
+              </div>
+            )}
             {uploadResult?.warnings && uploadResult.warnings.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
@@ -261,15 +296,31 @@ function ProjectCard({
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploadMode, setUploadMode] = useState<"replace" | "append">("replace");
+  const [stepLabel, setStepLabel] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setSelectedFile(file);
+    setUploadDialogOpen(true);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleUploadConfirm = async () => {
+    if (!selectedFile) return;
     setUploading(true);
     try {
-      const text = await file.text();
-      const isJson = file.name.endsWith(".json");
-      const res = await fetch(`/api/projects/${project.id}/ledger`, {
+      const text = await selectedFile.text();
+      const isJson = selectedFile.name.toLowerCase().endsWith(".json");
+      const params = new URLSearchParams();
+      params.set("mode", uploadMode);
+      if (uploadMode === "append" && stepLabel.trim()) {
+        params.set("stepLabel", stepLabel.trim());
+      }
+      const res = await fetch(`/api/projects/${project.id}/ledger?${params.toString()}`, {
         method: "POST",
         headers: { "Content-Type": isJson ? "application/json" : "text/markdown" },
         body: text,
@@ -282,107 +333,186 @@ function ProjectCard({
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       queryClient.invalidateQueries({ queryKey: ["/api/ledger"] });
       queryClient.invalidateQueries({ queryKey: ["/api/ledger/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ledger/baselines"] });
+      setUploadDialogOpen(false);
+      setSelectedFile(null);
+      setStepLabel("");
       onUploadResult({
         projectName: project.name,
         elementCount: result.elementCount ?? 0,
         warnings: result.warnings,
+        mode: result.mode,
+        newElements: result.newElements,
+        baselineId: result.baselineId,
+        counts: result.counts,
       });
     } catch (err: any) {
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
     } finally {
       setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
+  const handleDownloadTemplate = () => {
+    const link = document.createElement("a");
+    link.href = "/api/actions-template";
+    link.download = "ledger-upload.yml";
+    link.click();
+  };
+
   return (
-    <Card className={isActive ? "ring-2 ring-primary" : ""} data-testid={`card-project-${project.id}`}>
-      <CardHeader className="p-4 pb-2">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <CardTitle className="text-base" data-testid={`text-project-name-${project.id}`}>{project.name}</CardTitle>
-          {isActive && <Badge variant="default" data-testid={`badge-active-${project.id}`}>Active</Badge>}
-        </div>
-        {project.description && (
-          <CardDescription className="line-clamp-2" data-testid={`text-project-desc-${project.id}`}>
-            {project.description}
-          </CardDescription>
-        )}
-      </CardHeader>
-      <CardContent className="p-4 pt-0">
-        <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-          <span className="flex items-center gap-1">
-            <Calendar className="w-3 h-3" />
-            {new Date(project.created_utc).toLocaleDateString()}
-          </span>
-          <span className="flex items-center gap-1" data-testid={`text-elements-${project.id}`}>
-            <Hash className="w-3 h-3" />
-            {project.elementCount} elements
-          </span>
-          {project.hasLedger ? (
-            <Badge variant="secondary" className="text-[10px]">
-              <CheckCircle className="w-3 h-3 mr-1" />
-              Ledger loaded
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="text-[10px] text-muted-foreground">
-              No ledger
-            </Badge>
+    <>
+      <Card className={isActive ? "ring-2 ring-primary" : ""} data-testid={`card-project-${project.id}`}>
+        <CardHeader className="p-4 pb-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <CardTitle className="text-base" data-testid={`text-project-name-${project.id}`}>{project.name}</CardTitle>
+            {isActive && <Badge variant="default" data-testid={`badge-active-${project.id}`}>Active</Badge>}
+          </div>
+          {project.description && (
+            <CardDescription className="line-clamp-2" data-testid={`text-project-desc-${project.id}`}>
+              {project.description}
+            </CardDescription>
           )}
-        </div>
-      </CardContent>
-      <CardFooter className="flex items-center gap-2 p-4 pt-0 flex-wrap">
-        {!isActive && (
-          <Button
-            variant="default"
-            size="sm"
-            onClick={onSelect}
-            disabled={selectPending}
-            data-testid={`button-select-${project.id}`}
-          >
-            {selectPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FolderOpen className="w-4 h-4" />}
-            Select
-          </Button>
-        )}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          data-testid={`button-upload-${project.id}`}
-        >
-          {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-          {uploading ? "Uploading..." : "Upload Ledger"}
-        </Button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".md,.markdown,.txt,.json"
-          className="hidden"
-          onChange={handleUpload}
-          data-testid={`input-file-${project.id}`}
-        />
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon" data-testid={`button-delete-${project.id}`}>
-              <Trash2 className="w-4 h-4" />
+        </CardHeader>
+        <CardContent className="p-4 pt-0">
+          <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              {new Date(project.created_utc).toLocaleDateString()}
+            </span>
+            <span className="flex items-center gap-1" data-testid={`text-elements-${project.id}`}>
+              <Hash className="w-3 h-3" />
+              {project.elementCount} elements
+            </span>
+            {project.hasLedger ? (
+              <Badge variant="secondary" className="text-[10px]">
+                <CheckCircle className="w-3 h-3 mr-1" />
+                Ledger loaded
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                No ledger
+              </Badge>
+            )}
+          </div>
+        </CardContent>
+        <CardFooter className="flex items-center gap-2 p-4 pt-0 flex-wrap">
+          {!isActive && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={onSelect}
+              disabled={selectPending}
+              data-testid={`button-select-${project.id}`}
+            >
+              {selectPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FolderOpen className="w-4 h-4" />}
+              Select
             </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent data-testid={`dialog-delete-${project.id}`}>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Project</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete &quot;{project.name}&quot;? This action cannot be undone. All ledger data will be permanently removed.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel data-testid={`button-cancel-delete-${project.id}`}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={onDelete} data-testid={`button-confirm-delete-${project.id}`}>
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </CardFooter>
-    </Card>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            data-testid={`button-upload-${project.id}`}
+          >
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            {uploading ? "Uploading..." : "Upload Ledger"}
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".md,.markdown,.txt,.json"
+            className="hidden"
+            onChange={handleFileSelect}
+            data-testid={`input-file-${project.id}`}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDownloadTemplate}
+            data-testid={`button-actions-template-${project.id}`}
+            title="Download GitHub Actions template"
+          >
+            <GitBranch className="w-4 h-4" />
+            <Download className="w-3 h-3" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" data-testid={`button-delete-${project.id}`}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent data-testid={`dialog-delete-${project.id}`}>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Project</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete &quot;{project.name}&quot;? This action cannot be undone. All ledger data will be permanently removed.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel data-testid={`button-cancel-delete-${project.id}`}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={onDelete} data-testid={`button-confirm-delete-${project.id}`}>
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardFooter>
+      </Card>
+
+      <Dialog open={uploadDialogOpen} onOpenChange={(open) => { if (!open) { setUploadDialogOpen(false); setSelectedFile(null); } }}>
+        <DialogContent data-testid={`dialog-upload-options-${project.id}`}>
+          <DialogHeader>
+            <DialogTitle>Upload Ledger</DialogTitle>
+            <DialogDescription>
+              {selectedFile ? `File: ${selectedFile.name}` : "Configure upload options."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Upload Mode</Label>
+              <Select value={uploadMode} onValueChange={(v) => setUploadMode(v as "replace" | "append")}>
+                <SelectTrigger data-testid="select-upload-mode">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="replace">Replace (full overwrite)</SelectItem>
+                  <SelectItem value="append">Append (merge new elements)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {uploadMode === "replace"
+                  ? "Replaces all existing ledger data in this project."
+                  : "Merges new elements into existing data. Duplicates are skipped. A baseline checkpoint is auto-created."}
+              </p>
+            </div>
+            {uploadMode === "append" && (
+              <div className="space-y-2">
+                <Label>Step Label</Label>
+                <Input
+                  placeholder="e.g. Step 2 - Security Analysis"
+                  value={stepLabel}
+                  onChange={(e) => setStepLabel(e.target.value)}
+                  data-testid="input-step-label"
+                />
+                <p className="text-xs text-muted-foreground">
+                  A name for this upload step. It will appear in the Baselines timeline.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setUploadDialogOpen(false); setSelectedFile(null); }} data-testid="button-cancel-upload">
+              Cancel
+            </Button>
+            <Button onClick={handleUploadConfirm} disabled={uploading} data-testid="button-confirm-upload">
+              {uploading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {uploading ? "Uploading..." : "Upload"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

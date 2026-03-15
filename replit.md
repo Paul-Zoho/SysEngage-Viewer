@@ -94,21 +94,22 @@ Each element type has a corresponding Register that tracks all member IDs for co
 
 ### Pages
 1. **Dashboard** - Overview stats, distribution charts, executive summary
-2. **Projects** - Create, manage, upload ledger files, switch active project
+2. **Projects** - Create, manage, upload ledger files (with mode toggle: replace/append + step label), switch active project, download GitHub Actions template
 3. **Ledger Explorer** - Hierarchical register browser with metadata
-4. **Sources** - Source excerpts table with provenance data
-5. **Segments** - Logical groupings of source text with titles, descriptions, and source references
-6. **Domains** - Domain classification cards
-6. **Traceability** - Trace relationships with flat/grouped views, type filtering, and search
-7. **Relationships** - Relationship matrix showing cross-type element connections with interactive filtering
-8. **Requirements** - Requirements with type, priority, verification
-9. **Coverage** - Coverage analysis with state distribution
-10. **Findings** - Analysis findings with severity and related items
-11. **Gaps** - Gap cards with impact, resolution state, affected cells
-12. **Risks** - Risk register with likelihood/impact/exposure matrix
-13. **Issues** - Issue tracking with severity and status
-14. **Decisions** - Architectural/governance decisions
-15. **Stakeholders** - Stakeholder profiles with domain associations
+4. **Baselines** - Timeline view of LedgerStep baselines from append uploads, showing step counts and new element contributions
+5. **Sources** - Source excerpts table with provenance data
+6. **Segments** - Logical groupings of source text with titles, descriptions, and source references
+7. **Domains** - Domain classification cards
+8. **Traceability** - Trace relationships with flat/grouped views, type filtering, and search
+9. **Relationships** - Relationship matrix showing cross-type element connections with interactive filtering
+10. **Requirements** - Requirements with type, priority, verification
+11. **Coverage** - Coverage analysis with state distribution
+12. **Findings** - Analysis findings with severity and related items
+13. **Gaps** - Gap cards with impact, resolution state, affected cells
+14. **Risks** - Risk register with likelihood/impact/exposure matrix
+15. **Issues** - Issue tracking with severity and status
+16. **Decisions** - Architectural/governance decisions
+17. **Stakeholders** - Stakeholder profiles with domain associations
 
 ### Relationship Visualization System
 Three interconnected features for exploring element relationships:
@@ -142,5 +143,6 @@ Key components:
 - `GET /api/ledger/element/:id` - Full element data by ID
 - `GET /api/ledger/elements/batch?ids=...` - Batch element lookup
 - `GET /api/ledger/sources|requirements|...` - Individual collections
+- `GET /api/actions-template` - Download GitHub Actions YAML template for CI/CD ledger uploads
 - `GET /api/neon/status` - Neon connection status, has-data checks
 - `POST /api/neon/migrate` - Force re-import all project ledgers into Neon relational tables

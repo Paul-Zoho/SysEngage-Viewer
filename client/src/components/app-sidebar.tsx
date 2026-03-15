@@ -30,6 +30,7 @@ import {
   ChevronsUpDown,
   Network,
   SplitSquareHorizontal,
+  Flag,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -50,6 +51,7 @@ const navGroups = [
       { title: "Dashboard", url: "/", icon: LayoutDashboard },
       { title: "Projects", url: "/projects", icon: FolderOpen },
       { title: "Ledger Explorer", url: "/explorer", icon: Database },
+      { title: "Baselines", url: "/baselines", icon: Flag },
     ],
   },
   {

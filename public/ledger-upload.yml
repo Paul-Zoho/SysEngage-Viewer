@@ -1,0 +1,78 @@
+name: Upload Ledger to SysEngage
+
+on:
+  workflow_dispatch:
+    inputs:
+      step_label:
+        description: 'Step label for this ledger upload (e.g. "Step 2 - Security Analysis")'
+        required: true
+        type: string
+      mode:
+        description: 'Upload mode: "append" to merge with existing data, "replace" to overwrite'
+        required: false
+        default: 'append'
+        type: choice
+        options:
+          - append
+          - replace
+
+env:
+  SYSENGAGE_URL: ${{ vars.SYSENGAGE_URL }}
+  SYSENGAGE_PROJECT_ID: ${{ vars.SYSENGAGE_PROJECT_ID }}
+  LEDGER_FILE: ${{ vars.LEDGER_FILE || 'output/ledger.json' }}
+
+jobs:
+  upload-ledger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate environment
+        run: |
+          if [ -z "$SYSENGAGE_URL" ]; then
+            echo "::error::SYSENGAGE_URL is not set. Add it as a repository variable."
+            exit 1
+          fi
+          if [ -z "$SYSENGAGE_PROJECT_ID" ]; then
+            echo "::error::SYSENGAGE_PROJECT_ID is not set. Add it as a repository variable."
+            exit 1
+          fi
+          if [ ! -f "$LEDGER_FILE" ]; then
+            echo "::error::Ledger file not found at $LEDGER_FILE"
+            exit 1
+          fi
+          echo "Uploading $LEDGER_FILE to $SYSENGAGE_URL/api/projects/$SYSENGAGE_PROJECT_ID/ledger"
+
+      - name: Detect content type
+        id: detect
+        run: |
+          if [[ "$LEDGER_FILE" == *.json ]]; then
+            echo "content_type=application/json" >> "$GITHUB_OUTPUT"
+          else
+            echo "content_type=text/markdown" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload ledger
+        run: |
+          STEP_LABEL="${{ inputs.step_label }}"
+          MODE="${{ inputs.mode }}"
+          ENCODED_LABEL=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$STEP_LABEL'))")
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST "${SYSENGAGE_URL}/api/projects/${SYSENGAGE_PROJECT_ID}/ledger?mode=${MODE}&stepLabel=${ENCODED_LABEL}" \
+            -H "Content-Type: ${{ steps.detect.outputs.content_type }}" \
+            -d @"$LEDGER_FILE")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+
+          echo "HTTP Status: $HTTP_CODE"
+          echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
+
+          if [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::Upload failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+          echo "::notice::Ledger uploaded successfully (mode: $MODE, step: $STEP_LABEL)"

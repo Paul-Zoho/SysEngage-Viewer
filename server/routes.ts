@@ -6,6 +6,8 @@ import { parseLedgerMarkdown, parseJsonLedger } from "./ledgerParser";
 import { getNeonDb } from "./neonDb";
 import { importLedgerToNeon, appendLedgerToNeon, mergeLedgerJsonb } from "./neonImport";
 import * as neonStorage from "./neonStorage";
+import * as fs from "fs";
+import * as path from "path";
 
 async function getActiveProjectId(): Promise<string> {
   return storage.getActiveProjectId();
@@ -141,6 +143,17 @@ export async function registerRoutes(
     const pid = await getActiveProjectId();
     const result = await neonStorage.getCollection(db, pid, "baselines");
     res.json(result);
+  });
+
+  app.get("/api/actions-template", (_req, res) => {
+    const templatePath = path.resolve("public", "ledger-upload.yml");
+    if (fs.existsSync(templatePath)) {
+      res.setHeader("Content-Type", "text/yaml");
+      res.setHeader("Content-Disposition", 'attachment; filename="ledger-upload.yml"');
+      fs.createReadStream(templatePath).pipe(res);
+    } else {
+      res.status(404).json({ error: "Template not found" });
+    }
   });
 
   app.get("/api/neon/status", async (_req, res) => {
