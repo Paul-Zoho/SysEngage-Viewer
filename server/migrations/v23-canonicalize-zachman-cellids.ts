@@ -5,6 +5,21 @@ function canonicalCellId(row: string, col: string): string {
 }
 
 const V23_PATTERN = /^ZC-R[1-6]-C-(What|How|Where|Who|When|Why)$/;
+const NUM_TO_COL: Record<string, string> = { "1": "What", "2": "How", "3": "Where", "4": "Who", "5": "When", "6": "Why" };
+
+function deriveCanonicalId(oldId: string, dbRow: string, dbCol: string): string {
+  const m0 = oldId.match(/^ZC[-_]ROW(\d)[-_](WHAT|HOW|WHERE|WHO|WHEN|WHY)$/i);
+  if (m0) {
+    const col = m0[2].charAt(0).toUpperCase() + m0[2].slice(1).toLowerCase();
+    return canonicalCellId(m0[1], col);
+  }
+  const m1 = oldId.match(/^ZC[-_]R(?:OW)?(\d)[-_]C[-_]?(What|How|Where|Who|When|Why)$/i);
+  if (m1) return canonicalCellId(m1[1], m1[2].charAt(0).toUpperCase() + m1[2].slice(1).toLowerCase());
+  const m2 = oldId.match(/^ZC[-_]R(?:OW)?(\d)[-_]C(\d)$/i);
+  if (m2 && NUM_TO_COL[m2[2]]) return canonicalCellId(m2[1], NUM_TO_COL[m2[2]]);
+  const colTitleCase = dbCol.charAt(0).toUpperCase() + dbCol.slice(1).toLowerCase();
+  return canonicalCellId(dbRow, colTitleCase);
+}
 
 export async function migrateZachmanCellIds() {
   const client = new pg.Client(process.env.NEON_DATABASE_URL);
@@ -22,8 +37,7 @@ export async function migrateZachmanCellIds() {
     await client.query("BEGIN");
 
     for (const { cell_id: oldId, row, col } of toMigrate) {
-      const colTitleCase = col.charAt(0).toUpperCase() + col.slice(1).toLowerCase();
-      const newId = canonicalCellId(row, colTitleCase);
+      const newId = deriveCanonicalId(oldId, row, col);
 
       await client.query("UPDATE n_zachman_cells SET cell_id = $1 WHERE cell_id = $2", [newId, oldId]);
       await client.query("UPDATE n_coverage_items SET target_ref = $1 WHERE target_ref = $2 AND coverage_type = 'Cell'", [newId, oldId]);

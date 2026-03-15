@@ -80,11 +80,18 @@ function normalizeCellIdRef(raw: string): string {
   return raw;
 }
 
-function normalizeRowTarget(raw: any): string | null {
+function normalizeRowTargetText(raw: any): string | null {
   if (!raw) return null;
   if (Array.isArray(raw)) {
-    const normalized = raw.map((r: any) => normalizeZachmanRow(String(r)));
-    return normalized.join(",");
+    return raw.map((r: any) => normalizeZachmanRow(String(r))).join(",");
+  }
+  return normalizeZachmanRow(String(raw));
+}
+
+function normalizeRowTargetJson(raw: any): string | string[] | null {
+  if (!raw) return null;
+  if (Array.isArray(raw)) {
+    return raw.map((r: any) => normalizeZachmanRow(String(r)));
   }
   return normalizeZachmanRow(String(raw));
 }
@@ -234,7 +241,7 @@ export async function importLedgerToNeon(db: NeonDb, projectId: string, ledger: 
       version: ledger.version || (ledger as any).sysengage_ledger_version,
       runId: (ledger as any).run_id,
       schemaId: (ledger as any).schema_id,
-      rowTarget: normalizeRowTarget((ledger as any).row_target),
+      rowTarget: normalizeRowTargetText((ledger as any).row_target),
       createdUtc: ledger.created_utc,
       generator: (ledger as any).generator || null,
     });
@@ -786,7 +793,7 @@ export async function appendLedgerToNeon(
       }
       const baselineDesc = `Step "${stepLabel}" added ${totalNew} new element(s). ${countSummaryParts.join(", ")}`;
 
-      const rowTarget = normalizeRowTarget((ledger as any).row_target);
+      const rowTarget = normalizeRowTargetJson((ledger as any).row_target);
       await tx.insert(ns.baselines).values({
         projectId,
         baselineId,
