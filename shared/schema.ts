@@ -384,7 +384,7 @@ export interface Signal {
   signal_type: string;
   observed_text: string;
   description: string;
-  source_refs?: string[];
+  source_refs: string[];
   sourceatom_refs?: string[];
   produced_by_pass_id: string;
   confidence: number;

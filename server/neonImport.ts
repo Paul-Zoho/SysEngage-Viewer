@@ -27,7 +27,7 @@ const knownFields: Record<string, Set<string>> = {
   issues: new Set(["issue_id", "title", "description", "severity", "status", "resolution_summary", "owner", "confidence"]),
   traces: new Set(["trace_id", "from_ref", "to_ref", "from_id", "to_id", "trace_type", "rationale", "description", "confidence", "interpretation_magnitude"]),
   decisions: new Set(["decision_id", "title", "description", "decision_type", "status", "rationale", "decided_utc", "confidence"]),
-  questions: new Set(["question_id", "question_text", "why_it_matters", "expected_answer_format", "target_cells", "priority", "status", "confidence"]),
+  questions: new Set(["question_id", "question_text", "why_it_matters", "target_cells", "priority", "status", "confidence"]),
   answers: new Set(["answer_id", "question_id", "response_text", "provided_by", "provided_utc", "confidence"]),
   assumptions: new Set(["assumption_id", "statement", "scope", "confidence"]),
   constraints: new Set(["constraint_id", "statement", "constraint_type", "rationale", "priority", "confidence"]),
