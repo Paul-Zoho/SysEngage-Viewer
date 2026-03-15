@@ -36,6 +36,8 @@ const COL_ALIASES: Record<string, string> = {
   "people": "Who", "organisation": "Who", "organization": "Who",
   "time": "When", "schedule": "When",
   "motivation": "Why", "goal": "Why",
+  "c1": "What", "c2": "How", "c3": "Where", "c4": "Who", "c5": "When", "c6": "Why",
+  "1": "What", "2": "How", "3": "Where", "4": "Who", "5": "When", "6": "Why",
 };
 
 export function normalizeZachmanColumn(raw: string | undefined | null): string {
@@ -59,6 +61,19 @@ export function canonicalCellId(row: string, column: string): string {
 function normalizeZachmanCellId(raw: string, row: string, col: string): string {
   if (ZC_V23_PATTERN.test(raw)) return raw;
   return canonicalCellId(row, col);
+}
+
+function normalizeCellIdRef(raw: string): string {
+  if (!raw) return raw;
+  if (ZC_V23_PATTERN.test(raw)) return raw;
+  const m1 = raw.match(/^ZC[-_]R(?:OW)?(\d)[-_]C[-_]?(What|How|Where|Who|When|Why)$/i);
+  if (m1) return canonicalCellId(m1[1], m1[2].charAt(0).toUpperCase() + m1[2].slice(1).toLowerCase());
+  const m2 = raw.match(/^ZC[-_]R(?:OW)?(\d)[-_]C(\d)$/i);
+  if (m2) {
+    const colMap: Record<string, string> = { "1": "What", "2": "How", "3": "Where", "4": "Who", "5": "When", "6": "Why" };
+    if (colMap[m2[2]]) return canonicalCellId(m2[1], colMap[m2[2]]);
+  }
+  return raw;
 }
 
 function normalizeRowTarget(raw: any): string | string[] | null {
@@ -332,7 +347,9 @@ export async function importLedgerToNeon(db: NeonDb, projectId: string, ledger: 
     await insertBatch(ns.coverageItems, ledger.coverage_items, "coverage_items", (c: any) => {
       const covId = c.coverage_id || c.coverage_item_id;
       allRefs.push(...extractRefs(c, covId, projectId));
-      return { projectId, coverageId: covId, coverageType: c.coverage_type, targetRef: c.target_ref || c.target_id, coverageState: c.coverage_state || c.row1_relevance, producedByPassId: c.produced_by_pass_id, notes: c.notes, coverageStatement: c.coverage_statement, confidence: c.confidence, extra: extractExtra(c, knownFields.coverage_items) };
+      const rawRef = c.target_ref || c.target_id;
+      const targetRef = c.coverage_type === "Cell" ? normalizeCellIdRef(rawRef) : rawRef;
+      return { projectId, coverageId: covId, coverageType: c.coverage_type, targetRef, coverageState: c.coverage_state || c.row1_relevance, producedByPassId: c.produced_by_pass_id, notes: c.notes, coverageStatement: c.coverage_statement, confidence: c.confidence, extra: extractExtra(c, knownFields.coverage_items) };
     });
 
     await insertBatch(ns.rules, ledger.rules, "rules", (r: any) => {
@@ -362,12 +379,12 @@ export async function importLedgerToNeon(db: NeonDb, projectId: string, ledger: 
     await insertBatch(ns.cellContentItems, validCCI, "cell_content_items", (c: any) => {
       const cciId = c.cell_content_item_id || c.ci_id || c.id;
       allRefs.push(...extractRefs(c, cciId, projectId));
-      return { projectId, cellContentItemId: cciId, cellId: c.cell_id, description: c.description, meaningKey: c.meaning_key, classificationType: c.classification_type, confidence: c.confidence, extra: extractExtra(c, knownFields.cell_content_items) };
+      return { projectId, cellContentItemId: cciId, cellId: normalizeCellIdRef(c.cell_id), description: c.description, meaningKey: c.meaning_key, classificationType: c.classification_type, confidence: c.confidence, extra: extractExtra(c, knownFields.cell_content_items) };
     });
 
     await insertBatch(ns.cellRelationships, ledger.cell_relationships, "cell_relationships", (c: any) => {
       allRefs.push(...extractRefs(c, c.relationship_id, projectId));
-      return { projectId, relationshipId: c.relationship_id, fromCi: c.from_ci || c.from_cell_id, toCi: c.to_ci || c.to_cell_id, relationshipType: c.relationship_type, description: c.description, confidence: c.confidence, extra: extractExtra(c, knownFields.cell_relationships) };
+      return { projectId, relationshipId: c.relationship_id, fromCi: normalizeCellIdRef(c.from_ci || c.from_cell_id), toCi: normalizeCellIdRef(c.to_ci || c.to_cell_id), relationshipType: c.relationship_type, description: c.description, confidence: c.confidence, extra: extractExtra(c, knownFields.cell_relationships) };
     });
 
     await insertBatch(ns.analysisPasses, ledger.analysis_passes, "analysis_passes", (a: any) => {
@@ -548,7 +565,9 @@ function buildCollectionSpecs(): CollectionSpec[] {
     { table: ns.coverageItems, idColumn: "coverageId", ledgerKey: "coverage_items", idField: "coverage_id",
       mapFn: (c, pid) => {
         const covId = c.coverage_id || c.coverage_item_id;
-        return { projectId: pid, coverageId: covId, coverageType: c.coverage_type, targetRef: c.target_ref || c.target_id, coverageState: c.coverage_state || c.row1_relevance, producedByPassId: c.produced_by_pass_id, notes: c.notes, coverageStatement: c.coverage_statement, confidence: c.confidence, extra: extractExtra(c, knownFields.coverage_items) };
+        const rawRef = c.target_ref || c.target_id;
+        const targetRef = c.coverage_type === "Cell" ? normalizeCellIdRef(rawRef) : rawRef;
+        return { projectId: pid, coverageId: covId, coverageType: c.coverage_type, targetRef, coverageState: c.coverage_state || c.row1_relevance, producedByPassId: c.produced_by_pass_id, notes: c.notes, coverageStatement: c.coverage_statement, confidence: c.confidence, extra: extractExtra(c, knownFields.coverage_items) };
       } },
     { table: ns.rules, idColumn: "ruleId", ledgerKey: "rules", idField: "rule_id",
       mapFn: (r, pid) => ({ projectId: pid, ruleId: r.rule_id, name: r.name, description: r.description, ruleType: r.rule_type, severityDefault: r.severity_default, version: r.version, confidence: r.confidence, extra: extractExtra(r, knownFields.rules) }) },
@@ -566,10 +585,10 @@ function buildCollectionSpecs(): CollectionSpec[] {
     { table: ns.cellContentItems, idColumn: "cellContentItemId", ledgerKey: "cell_content_items", idField: "cell_content_item_id",
       mapFn: (c, pid) => {
         const cciId = c.cell_content_item_id || c.ci_id || c.id;
-        return { projectId: pid, cellContentItemId: cciId, cellId: c.cell_id, description: c.description, meaningKey: c.meaning_key, classificationType: c.classification_type, confidence: c.confidence, extra: extractExtra(c, knownFields.cell_content_items) };
+        return { projectId: pid, cellContentItemId: cciId, cellId: normalizeCellIdRef(c.cell_id), description: c.description, meaningKey: c.meaning_key, classificationType: c.classification_type, confidence: c.confidence, extra: extractExtra(c, knownFields.cell_content_items) };
       } },
     { table: ns.cellRelationships, idColumn: "relationshipId", ledgerKey: "cell_relationships", idField: "relationship_id",
-      mapFn: (c, pid) => ({ projectId: pid, relationshipId: c.relationship_id, fromCi: c.from_ci || c.from_cell_id, toCi: c.to_ci || c.to_cell_id, relationshipType: c.relationship_type, description: c.description, confidence: c.confidence, extra: extractExtra(c, knownFields.cell_relationships) }) },
+      mapFn: (c, pid) => ({ projectId: pid, relationshipId: c.relationship_id, fromCi: normalizeCellIdRef(c.from_ci || c.from_cell_id), toCi: normalizeCellIdRef(c.to_ci || c.to_cell_id), relationshipType: c.relationship_type, description: c.description, confidence: c.confidence, extra: extractExtra(c, knownFields.cell_relationships) }) },
     { table: ns.analysisPasses, idColumn: "passId", ledgerKey: "analysis_passes", idField: "pass_id",
       mapFn: (a, pid) => ({ projectId: pid, passId: a.pass_id, passType: a.pass_type, evaluatedScope: a.evaluated_scope, confidence: a.confidence, coverageDeclaration: a.coverage_declaration || null, extra: extractExtra(a, knownFields.analysis_passes) }) },
     { table: ns.narrativeSummaries, idColumn: "summaryId", ledgerKey: "narrative_summaries", idField: "summary_id",
