@@ -431,7 +431,7 @@ export default function ElementDetail() {
   }
 
   const currentNode = nodeMap.get(elementId);
-  const elementTitle = elementData.element.title || elementData.element.name || elementData.element.statement || elementData.element.description || elementData.element.source_text || elementId;
+  const elementTitle = elementData.element.title || elementData.element.name || elementData.element.statement || elementData.element.description || elementData.element.source_text || elementData.element.observed_text || elementData.element.signal_text || elementId;
 
   return (
     <div className="p-6 space-y-6">
