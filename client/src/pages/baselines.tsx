@@ -54,10 +54,18 @@ export default function Baselines() {
     );
   }
 
-  const sorted = [...(baselines || [])].sort((a, b) => {
+  const sorted = [...(baselines || [])].map((bl) => {
+    if (bl.totalNewElements === undefined && bl.description) {
+      const match = bl.description.match(/(\d+)\s+new\s+elements?\s+added/i);
+      if (match) {
+        return { ...bl, totalNewElements: parseInt(match[1], 10) };
+      }
+    }
+    return bl;
+  }).sort((a, b) => {
     const da = a.created_utc ? new Date(a.created_utc).getTime() : 0;
-    const db = b.created_utc ? new Date(b.created_utc).getTime() : 0;
-    return db - da;
+    const dbTime = b.created_utc ? new Date(b.created_utc).getTime() : 0;
+    return dbTime - da;
   });
 
   return (

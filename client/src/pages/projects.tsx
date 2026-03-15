@@ -346,8 +346,9 @@ function ProjectCard({
         baselineId: result.baselineId,
         counts: result.counts,
       });
-    } catch (err: any) {
-      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast({ title: "Upload failed", description: message, variant: "destructive" });
     } finally {
       setUploading(false);
     }
@@ -432,10 +433,9 @@ function ProjectCard({
             size="sm"
             onClick={handleDownloadTemplate}
             data-testid={`button-actions-template-${project.id}`}
-            title="Download GitHub Actions template"
           >
             <GitBranch className="w-4 h-4" />
-            <Download className="w-3 h-3" />
+            <span className="text-xs">Get Actions template</span>
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
