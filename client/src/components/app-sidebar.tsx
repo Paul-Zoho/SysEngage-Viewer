@@ -31,6 +31,7 @@ import {
   Network,
   SplitSquareHorizontal,
   Flag,
+  Grid3X3,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -69,6 +70,7 @@ const navGroups = [
     items: [
       { title: "Requirements", url: "/requirements", icon: ClipboardList },
       { title: "Coverage", url: "/coverage", icon: BarChart3 },
+      { title: "Zachman Grid", url: "/zachman-grid", icon: Grid3X3 },
     ],
   },
   {

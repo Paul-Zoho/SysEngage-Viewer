@@ -280,3 +280,95 @@ export async function getRegisters(db: NeonDb, projectId: string): Promise<any[]
   const rows = await db.select().from(ns.registers).where(eq(ns.registers.projectId, projectId));
   return rows.map(rowToSnakeCase);
 }
+
+export async function getZachmanGrid(db: NeonDb, projectId: string) {
+  const ROWS = ["1", "2", "3", "4", "5", "6"];
+  const COLS = ["What", "How", "Where", "Who", "When", "Why"];
+
+  const [cells, coverageRows, contentRows] = await Promise.all([
+    db.select().from(ns.zachmanCells).where(eq(ns.zachmanCells.projectId, projectId)),
+    db.select().from(ns.coverageItems).where(
+      sql`${ns.coverageItems.projectId} = ${projectId} AND ${ns.coverageItems.coverageType} = 'Cell'`
+    ),
+    db.select({
+      cellId: ns.cellContentItems.cellId,
+      cnt: sql<number>`count(*)::int`,
+    }).from(ns.cellContentItems)
+      .where(eq(ns.cellContentItems.projectId, projectId))
+      .groupBy(ns.cellContentItems.cellId),
+  ]);
+
+  const cellMap = new Map<string, typeof cells[0]>();
+  for (const c of cells) {
+    cellMap.set(c.cellId, c);
+  }
+
+  const coverageMap = new Map<string, typeof coverageRows>();
+  for (const cv of coverageRows) {
+    const ref = cv.targetRef || "";
+    if (!coverageMap.has(ref)) coverageMap.set(ref, []);
+    coverageMap.get(ref)!.push(cv);
+  }
+
+  const contentCountMap = new Map<string, number>();
+  for (const cc of contentRows) {
+    if (cc.cellId) contentCountMap.set(cc.cellId, cc.cnt);
+  }
+
+  const grid: Record<string, any> = {};
+  let totalDeclared = 0, totalCovered = 0, totalPartial = 0, totalNotCovered = 0;
+
+  for (const row of ROWS) {
+    for (const col of COLS) {
+      const key = `${row}-${col}`;
+      const canonicalId = `ZC-R${row}-C-${col}`;
+      const cell = cellMap.get(canonicalId);
+
+      if (!cell) {
+        grid[key] = {
+          cellId: null, row, column: col,
+          coverageState: "NotDeclared",
+          confidence: null, contentCount: 0, coverageItems: [],
+        };
+        continue;
+      }
+
+      totalDeclared++;
+      const covItems = coverageMap.get(canonicalId) || [];
+      const contentCount = contentCountMap.get(canonicalId) || 0;
+
+      let coverageState: string = "NotCovered";
+      let bestConfidence: number | null = cell.confidence;
+
+      if (covItems.length > 0) {
+        const hasFull = covItems.some(ci => ci.coverageState === "Covered");
+        const hasPartial = covItems.some(ci => ci.coverageState === "PartiallyCovered");
+        if (hasFull) coverageState = "FullyCovered";
+        else if (hasPartial) coverageState = "PartiallyCovered";
+        else coverageState = "NotCovered";
+
+        const confValues = covItems.filter(ci => ci.confidence != null).map(ci => ci.confidence!);
+        if (confValues.length > 0) bestConfidence = Math.max(...confValues);
+      }
+
+      if (coverageState === "FullyCovered") totalCovered++;
+      else if (coverageState === "PartiallyCovered") totalPartial++;
+      else totalNotCovered++;
+
+      grid[key] = {
+        cellId: canonicalId, row, column: col,
+        coverageState,
+        confidence: bestConfidence,
+        contentCount,
+        coverageItems: covItems.map(ci => ({
+          coverageId: ci.coverageId,
+          coverageState: ci.coverageState,
+          confidence: ci.confidence,
+          notes: ci.notes || ci.coverageStatement || null,
+        })),
+      };
+    }
+  }
+
+  return { grid, totalDeclared, totalCovered, totalPartial, totalNotCovered };
+}

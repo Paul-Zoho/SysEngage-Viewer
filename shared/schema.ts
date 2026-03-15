@@ -568,6 +568,42 @@ export interface Project {
   ledger: CanonicalLedger | null;
 }
 
+export const ZACHMAN_ROWS = ["1", "2", "3", "4", "5", "6"] as const;
+export const ZACHMAN_COLUMNS = ["What", "How", "Where", "Who", "When", "Why"] as const;
+export const ZACHMAN_ROW_LABELS: Record<string, string> = {
+  "1": "Contextual (Scope)",
+  "2": "Conceptual (Business)",
+  "3": "Logical (System)",
+  "4": "Physical (Technology)",
+  "5": "Detail (Component)",
+  "6": "Operational (Instance)",
+};
+
+export type ZachmanCoverageState = "FullyCovered" | "PartiallyCovered" | "NotCovered" | "NotDeclared";
+
+export interface ZachmanGridCell {
+  cellId: string | null;
+  row: string;
+  column: string;
+  coverageState: ZachmanCoverageState;
+  confidence: number | null;
+  contentCount: number;
+  coverageItems: {
+    coverageId: string;
+    coverageState: string;
+    confidence: number | null;
+    notes: string | null;
+  }[];
+}
+
+export interface ZachmanGridResponse {
+  grid: Record<string, ZachmanGridCell>;
+  totalDeclared: number;
+  totalCovered: number;
+  totalPartial: number;
+  totalNotCovered: number;
+}
+
 export const insertProjectSchema = z.object({
   name: z.string().min(1, "Project name is required").max(200),
   description: z.string().max(1000).optional(),

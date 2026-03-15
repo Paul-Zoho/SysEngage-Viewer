@@ -23,6 +23,7 @@ import Projects from "@/pages/projects";
 import Relationships from "@/pages/relationships";
 import Segments from "@/pages/segments";
 import Baselines from "@/pages/baselines";
+import ZachmanGrid from "@/pages/zachman-grid";
 import ElementDetail from "@/pages/element-detail";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -46,6 +47,7 @@ function Router() {
       <Route path="/relationships" component={Relationships} />
       <Route path="/segments" component={Segments} />
       <Route path="/baselines" component={Baselines} />
+      <Route path="/zachman-grid" component={ZachmanGrid} />
       <Route path="/element/:id" component={ElementDetail} />
       <Route component={NotFound} />
     </Switch>
