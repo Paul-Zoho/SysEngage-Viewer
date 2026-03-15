@@ -63,22 +63,29 @@ function normalizeZachmanCellId(raw: string, row: string, col: string): string {
   return canonicalCellId(row, col);
 }
 
+const NUM_TO_COL: Record<string, string> = { "1": "What", "2": "How", "3": "Where", "4": "Who", "5": "When", "6": "Why" };
+
 function normalizeCellIdRef(raw: string): string {
   if (!raw) return raw;
   if (ZC_V23_PATTERN.test(raw)) return raw;
+  const m0 = raw.match(/^ZC[-_]ROW(\d)[-_](WHAT|HOW|WHERE|WHO|WHEN|WHY)$/i);
+  if (m0) {
+    const col = m0[2].charAt(0).toUpperCase() + m0[2].slice(1).toLowerCase();
+    return canonicalCellId(m0[1], col);
+  }
   const m1 = raw.match(/^ZC[-_]R(?:OW)?(\d)[-_]C[-_]?(What|How|Where|Who|When|Why)$/i);
   if (m1) return canonicalCellId(m1[1], m1[2].charAt(0).toUpperCase() + m1[2].slice(1).toLowerCase());
   const m2 = raw.match(/^ZC[-_]R(?:OW)?(\d)[-_]C(\d)$/i);
-  if (m2) {
-    const colMap: Record<string, string> = { "1": "What", "2": "How", "3": "Where", "4": "Who", "5": "When", "6": "Why" };
-    if (colMap[m2[2]]) return canonicalCellId(m2[1], colMap[m2[2]]);
-  }
+  if (m2 && NUM_TO_COL[m2[2]]) return canonicalCellId(m2[1], NUM_TO_COL[m2[2]]);
   return raw;
 }
 
-function normalizeRowTarget(raw: any): string | string[] | null {
+function normalizeRowTarget(raw: any): string | null {
   if (!raw) return null;
-  if (Array.isArray(raw)) return raw.map((r: any) => normalizeZachmanRow(String(r)));
+  if (Array.isArray(raw)) {
+    const normalized = raw.map((r: any) => normalizeZachmanRow(String(r)));
+    return normalized.join(",");
+  }
   return normalizeZachmanRow(String(raw));
 }
 
@@ -779,6 +786,7 @@ export async function appendLedgerToNeon(
       }
       const baselineDesc = `Step "${stepLabel}" added ${totalNew} new element(s). ${countSummaryParts.join(", ")}`;
 
+      const rowTarget = normalizeRowTarget((ledger as any).row_target);
       await tx.insert(ns.baselines).values({
         projectId,
         baselineId,
@@ -787,7 +795,7 @@ export async function appendLedgerToNeon(
         baselineType: "LedgerStep",
         createdUtc: nowUtc,
         confidence: 1.0,
-        extra: { stepCounts: counts, totalNewElements: totalNew },
+        extra: { stepCounts: counts, totalNewElements: totalNew, ...(rowTarget ? { rowTarget } : {}) },
       });
 
       return { success: true, mode: "append" as const, newElements: totalNew, baselineId, baselineCreatedUtc: nowUtc, baselineDescription: baselineDesc, counts };
