@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { insertProjectSchema } from "@shared/schema";
 import { parseLedgerMarkdown, parseJsonLedger } from "./ledgerParser";
 import { getNeonDb } from "./neonDb";
-import { importLedgerToNeon } from "./neonImport";
+import { importLedgerToNeon, appendLedgerToNeon, mergeLedgerJsonb } from "./neonImport";
 import * as neonStorage from "./neonStorage";
 
 async function getActiveProjectId(): Promise<string> {
@@ -137,6 +137,12 @@ export async function registerRoutes(
     res.json(result);
   });
 
+  app.get("/api/ledger/baselines", async (_req, res) => {
+    const pid = await getActiveProjectId();
+    const result = await neonStorage.getCollection(db, pid, "baselines");
+    res.json(result);
+  });
+
   app.get("/api/neon/status", async (_req, res) => {
     try {
       const pid = await getActiveProjectId();
@@ -218,9 +224,18 @@ export async function registerRoutes(
       return res.status(404).json({ message: "Project not found" });
     }
 
+    const mode = (req.query.mode as string || "replace").toLowerCase();
+    const stepLabel = (req.query.stepLabel as string) || "Unnamed Step";
+
+    if (mode !== "replace" && mode !== "append") {
+      return res.status(400).json({ message: "Invalid mode. Use 'replace' or 'append'." });
+    }
+
     const contentType = (req.headers["content-type"] || "").toLowerCase();
     const isJson = contentType.includes("application/json") ||
       (typeof req.body === "object" && req.body !== null && !Array.isArray(req.body) && req.body.elements);
+
+    let parsedLedger: { ledger: import("@shared/schema").CanonicalLedger; warnings: any[]; elementCount: number };
 
     if (isJson) {
       try {
@@ -230,72 +245,96 @@ export async function registerRoutes(
         } else {
           jsonData = req.body;
         }
-        const result = parseJsonLedger(jsonData as Record<string, unknown>);
-        await storage.setProjectLedger(req.params.id, result.ledger);
+        parsedLedger = parseJsonLedger(jsonData as Record<string, unknown>);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return res.status(400).json({ message: `Failed to parse JSON ledger: ${msg}` });
+      }
+    } else {
+      let markdownContent: string;
+      if (typeof req.body === "string") {
+        markdownContent = req.body;
+      } else if (req.body?.content && typeof req.body.content === "string") {
+        markdownContent = req.body.content;
+      } else {
+        return res.status(400).json({ message: "Expected markdown content as text, JSON { content: string }, or a JSON ledger file" });
+      }
 
-        let neonImported = false;
-        try {
-          const neonResult = await importLedgerToNeon(db, req.params.id, result.ledger);
-          neonImported = neonResult.success;
-          if (!neonResult.success) {
-            console.error("[Neon] Import failed during upload:", neonResult.error);
-          }
-        } catch (e: unknown) {
-          const msg = e instanceof Error ? e.message : String(e);
-          console.error("[Neon] Import error during upload:", msg);
+      if (markdownContent.length < 10) {
+        return res.status(400).json({ message: "Ledger content is too short" });
+      }
+
+      try {
+        parsedLedger = parseLedgerMarkdown(markdownContent);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return res.status(400).json({ message: `Failed to parse ledger: ${msg}` });
+      }
+    }
+
+    const projectId = req.params.id;
+
+    if (mode === "append") {
+      try {
+        const appendResult = await appendLedgerToNeon(db, projectId, parsedLedger.ledger, stepLabel);
+        if (!appendResult.success) {
+          return res.status(500).json({ message: `Append failed: ${appendResult.error}` });
         }
+
+        const existingLedger = await storage.getLedgerForProject(projectId);
+        const mergedLedger = mergeLedgerJsonb(existingLedger, parsedLedger.ledger);
+
+        const baselineEntry = {
+          baseline_id: appendResult.baselineId,
+          name: stepLabel,
+          description: `Step "${stepLabel}" added ${appendResult.newElements} new element(s). ${Object.entries(appendResult.counts).filter(([k]) => k !== "element_refs").map(([k, v]) => `${k}: ${v}`).join(", ")}`,
+          baseline_type: "LedgerStep",
+          created_utc: new Date().toISOString(),
+          confidence: 1.0,
+        };
+        if (!mergedLedger.baselines) (mergedLedger as any).baselines = [];
+        (mergedLedger as any).baselines.push(baselineEntry);
+
+        await storage.setProjectLedger(projectId, mergedLedger);
 
         res.json({
           success: true,
-          elementCount: result.elementCount,
-          warnings: result.warnings,
-          ledgerId: result.ledger.ledger_id,
-          neonImported,
+          mode: "append",
+          newElements: appendResult.newElements,
+          baselineId: appendResult.baselineId,
+          counts: appendResult.counts,
+          warnings: parsedLedger.warnings,
+          ledgerId: parsedLedger.ledger.ledger_id,
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        res.status(400).json({ message: `Failed to parse JSON ledger: ${msg}` });
+        res.status(500).json({ message: `Append error: ${msg}` });
       }
       return;
     }
 
-    let markdownContent: string;
-    if (typeof req.body === "string") {
-      markdownContent = req.body;
-    } else if (req.body?.content && typeof req.body.content === "string") {
-      markdownContent = req.body.content;
-    } else {
-      return res.status(400).json({ message: "Expected markdown content as text, JSON { content: string }, or a JSON ledger file" });
-    }
+    await storage.setProjectLedger(projectId, parsedLedger.ledger);
 
-    if (markdownContent.length < 10) {
-      return res.status(400).json({ message: "Ledger content is too short" });
-    }
-
+    let neonImported = false;
     try {
-      const result = parseLedgerMarkdown(markdownContent);
-      await storage.setProjectLedger(req.params.id, result.ledger);
-
-      let neonImported = false;
-      try {
-        const neonResult = await importLedgerToNeon(db, req.params.id, result.ledger);
-        neonImported = neonResult.success;
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e);
-        console.error("[Neon] Import error during markdown upload:", msg);
+      const neonResult = await importLedgerToNeon(db, projectId, parsedLedger.ledger);
+      neonImported = neonResult.success;
+      if (!neonResult.success) {
+        console.error("[Neon] Import failed during upload:", neonResult.error);
       }
-
-      res.json({
-        success: true,
-        elementCount: result.elementCount,
-        warnings: result.warnings,
-        ledgerId: result.ledger.ledger_id,
-        neonImported,
-      });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      res.status(400).json({ message: `Failed to parse ledger: ${msg}` });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[Neon] Import error during upload:", msg);
     }
+
+    res.json({
+      success: true,
+      mode: "replace",
+      elementCount: parsedLedger.elementCount,
+      warnings: parsedLedger.warnings,
+      ledgerId: parsedLedger.ledger.ledger_id,
+      neonImported,
+    });
   });
 
   return httpServer;

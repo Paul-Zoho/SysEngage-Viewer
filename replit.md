@@ -24,7 +24,8 @@ SysEngage is a Systems Engineering tool that implements the Canonical Ledger Spe
   - Collection endpoints read from normalized Neon tables with JSONB fallback
   - Project CRUD hits `n_projects` in Neon
 - **Ledger Parser**: `server/ledgerParser.ts` — parses markdown and JSON ledger files into CanonicalLedger objects
-- **Neon Integration**: `server/neonDb.ts` (connection, required), `shared/neonSchema.ts` (Drizzle schema), `server/neonImport.ts` (ledger→relational import), `server/neonStorage.ts` (relational query layer)
+- **Neon Integration**: `server/neonDb.ts` (connection, required), `shared/neonSchema.ts` (Drizzle schema), `server/neonImport.ts` (ledger→relational import + append mode), `server/neonStorage.ts` (relational query layer)
+- **Append Mode**: `POST /api/projects/:id/ledger?mode=append&stepLabel=...` merges new elements into existing data (skipping duplicates by element ID). Auto-creates a `LedgerStep` baseline marking each step. JSONB blob in `n_projects` is also merged. Default mode is `replace` (full delete+replace, existing behavior).
 - **Running**: Production build via `NODE_ENV=production node dist/index.cjs` for stability; run `npm run build` after code changes
 - **Note**: The `process.exit(1)` in `server/vite.ts` is suppressed by an override in `server/index.ts` (dev mode only) to prevent Vite errors from crashing the server
 
@@ -133,7 +134,8 @@ Key components:
 - `DELETE /api/projects/:id` - Delete project
 - `GET /api/projects/active` - Get active project ID
 - `PUT /api/projects/active` - Set active project
-- `POST /api/projects/:id/ledger` - Upload ledger file (markdown or JSON) to project
+- `POST /api/projects/:id/ledger` - Upload ledger file (markdown or JSON) to project. Supports `?mode=append&stepLabel=StepName` for incremental appends
+- `GET /api/ledger/baselines` - Baselines for active project (includes auto-created LedgerStep baselines)
 - `GET /api/ledger` - Full ledger for active project
 - `GET /api/ledger/stats` - Computed statistics for active project
 - `GET /api/ledger/relationships` - Unified relationship graph (nodes + edges) for active project

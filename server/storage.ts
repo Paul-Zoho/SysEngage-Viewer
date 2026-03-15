@@ -8,6 +8,7 @@ type JsonbValue = Record<string, unknown> | null;
 
 export interface IStorage {
   getLedger(): Promise<CanonicalLedger | null>;
+  getLedgerForProject(id: string): Promise<CanonicalLedger | null>;
   getLedgerStats(): Promise<LedgerStats>;
   getProjects(): Promise<ProjectSummary[]>;
   getProject(id: string): Promise<Project | undefined>;
@@ -165,6 +166,12 @@ export class NeonProjectStorage implements IStorage {
 
   async getLedger(): Promise<CanonicalLedger | null> {
     const rows = await this.db.select({ ledger: nProjects.ledger }).from(nProjects).where(eq(nProjects.isActive, true)).limit(1);
+    if (rows.length === 0 || !rows[0].ledger) return null;
+    return rows[0].ledger as CanonicalLedger;
+  }
+
+  async getLedgerForProject(id: string): Promise<CanonicalLedger | null> {
+    const rows = await this.db.select({ ledger: nProjects.ledger }).from(nProjects).where(eq(nProjects.projectId, id)).limit(1);
     if (rows.length === 0 || !rows[0].ledger) return null;
     return rows[0].ledger as CanonicalLedger;
   }
