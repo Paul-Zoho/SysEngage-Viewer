@@ -662,7 +662,7 @@ export async function appendLedgerToNeon(
 
         const existingIds = await getExistingIds(tx, spec.table, spec.idColumn, projectId);
 
-        const newItems = items.filter((item: any) => {
+        const resolveItemId = (item: any): string => {
           let itemId: string;
           if (spec.ledgerKey === "coverage_items") {
             itemId = item.coverage_id || item.coverage_item_id;
@@ -677,13 +677,24 @@ export async function appendLedgerToNeon(
           } else {
             itemId = item[spec.idField];
           }
+          if (spec.ledgerKey === "zachman_cells" && itemId) {
+            const nRow = normalizeZachmanRow(item.row);
+            const nCol = normalizeZachmanColumn(item.column);
+            itemId = normalizeZachmanCellId(itemId, nRow, nCol);
+          }
+          return itemId;
+        };
+
+        const newItems = items.filter((item: any) => {
+          const itemId = resolveItemId(item);
           return itemId && !existingIds.has(itemId);
         });
 
         if (newItems.length === 0) continue;
 
         for (const item of newItems) {
-          allNewRefs.push(...extractRefs(item, item[spec.idField] || item.coverage_id || item.coverage_item_id || item.cell_content_item_id || item.ci_id || item.summary_id || item.narrative_summary_id || item.representation_id || item.structural_representation_id || item.artefact_id || item.control_artefact_id, projectId));
+          const canonicalId = resolveItemId(item);
+          allNewRefs.push(...extractRefs(item, canonicalId, projectId));
         }
 
         if (spec.ledgerKey === "traces") {
