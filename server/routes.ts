@@ -145,6 +145,11 @@ export async function registerRoutes(
     res.json(result);
   });
 
+  app.get("/api/ledger/:projectId/zachman-grid", async (req, res) => {
+    const result = await neonStorage.getZachmanGrid(db, req.params.projectId);
+    res.json(result);
+  });
+
   app.get("/api/ledger/baselines", async (_req, res) => {
     const pid = await getActiveProjectId();
     const result = await neonStorage.getCollection(db, pid, "baselines");

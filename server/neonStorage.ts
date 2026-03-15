@@ -341,14 +341,12 @@ export async function getZachmanGrid(db: NeonDb, projectId: string) {
       let bestConfidence: number | null = cell.confidence;
 
       if (covItems.length > 0) {
-        const hasFull = covItems.some(ci => ci.coverageState === "Covered");
-        const hasPartial = covItems.some(ci => ci.coverageState === "PartiallyCovered");
-        if (hasFull) coverageState = "FullyCovered";
-        else if (hasPartial) coverageState = "PartiallyCovered";
+        const latest = covItems.reduce((a, b) => ((a as any).id > (b as any).id ? a : b));
+        if (latest.coverageState === "Covered") coverageState = "FullyCovered";
+        else if (latest.coverageState === "PartiallyCovered") coverageState = "PartiallyCovered";
         else coverageState = "NotCovered";
 
-        const confValues = covItems.filter(ci => ci.confidence != null).map(ci => ci.confidence!);
-        if (confValues.length > 0) bestConfidence = Math.max(...confValues);
+        bestConfidence = latest.confidence ?? cell.confidence;
       }
 
       if (coverageState === "FullyCovered") totalCovered++;
