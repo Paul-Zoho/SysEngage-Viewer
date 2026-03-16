@@ -13,9 +13,23 @@ All endpoints are relative to the deployed instance root, e.g.:
 https://<your-replit-domain>.replit.dev
 ```
 
-There is no authentication layer at present — all endpoints are open. Add API
-key or token gating at the reverse-proxy or middleware level before exposing
-this to the internet.
+All `/api/*` endpoints are protected by an API key. Every request must include
+the key in one of these two header forms:
+
+```
+Authorization: Bearer <your-api-key>
+```
+or
+```
+X-API-Key: <your-api-key>
+```
+
+If the key is missing or incorrect the server returns `401 Unauthorized`.
+
+The key value is stored in the `API_SECRET_KEY` environment secret on the
+server. External apps must be given the same value and include it in every
+request. If `API_SECRET_KEY` is not configured on the server all endpoints
+remain open and a warning is printed to the server log on startup.
 
 ---
 

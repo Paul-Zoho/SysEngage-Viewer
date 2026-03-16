@@ -36,6 +36,23 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+const API_SECRET_KEY = process.env.API_SECRET_KEY;
+if (!API_SECRET_KEY) {
+  console.warn("[auth] WARNING: API_SECRET_KEY is not set — all /api/* endpoints are unprotected");
+}
+
+app.use("/api", (req: Request, res: Response, next: NextFunction) => {
+  if (!API_SECRET_KEY) return next();
+  const authHeader = req.headers["authorization"];
+  const apiKeyHeader = req.headers["x-api-key"];
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const providedKey = bearerToken || apiKeyHeader;
+  if (!providedKey || providedKey !== API_SECRET_KEY) {
+    return res.status(401).json({ message: "Unauthorized: valid API key required" });
+  }
+  next();
+});
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
