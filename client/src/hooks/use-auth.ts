@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
+import { getQueryFn, apiRequest, queryClient, setStoredToken, clearStoredToken } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 
 interface AuthUser {
@@ -8,6 +8,11 @@ interface AuthUser {
 
 interface AuthResponse {
   user: AuthUser;
+}
+
+interface LoginResponse {
+  user: AuthUser;
+  token: string;
 }
 
 export function useAuth() {
@@ -31,9 +36,10 @@ export function useLogin() {
   return useMutation({
     mutationFn: async (credentials: { username: string; password: string }) => {
       const res = await apiRequest("POST", "/api/auth/login", credentials);
-      return await res.json();
+      return (await res.json()) as LoginResponse;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setStoredToken(data.token);
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       setLocation("/");
     },
@@ -48,6 +54,7 @@ export function useLogout() {
       await apiRequest("POST", "/api/auth/logout");
     },
     onSuccess: () => {
+      clearStoredToken();
       queryClient.clear();
       setLocation("/login");
     },

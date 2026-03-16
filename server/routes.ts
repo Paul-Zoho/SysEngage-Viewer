@@ -1,6 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { type Server } from "http";
 import passport from "passport";
+import { createToken, deleteToken, validateToken } from "./authTokens";
 import { storage } from "./storage";
 import { insertProjectSchema } from "@shared/schema";
 import { parseLedgerMarkdown, parseJsonLedger } from "./ledgerParser";
@@ -28,12 +29,16 @@ export async function registerRoutes(
       }
       req.logIn(user, (loginErr: Error | null) => {
         if (loginErr) return next(loginErr);
-        return res.json({ user: { username: user.username } });
+        const token = createToken(user.username);
+        return res.json({ user: { username: user.username }, token });
       });
     })(req, res, next);
   });
 
   app.post("/api/auth/logout", (req: Request, res: Response, next: NextFunction) => {
+    const uiToken = req.headers["x-auth-token"] as string | undefined;
+    if (uiToken) deleteToken(uiToken);
+
     req.logout((err: Error | null) => {
       if (err) return next(err);
       req.session.destroy((destroyErr) => {
@@ -47,6 +52,11 @@ export async function registerRoutes(
   app.get("/api/auth/me", (req: Request, res: Response) => {
     if (req.isAuthenticated() && req.user) {
       return res.json({ user: { username: req.user.username } });
+    }
+    const uiToken = req.headers["x-auth-token"] as string | undefined;
+    if (uiToken) {
+      const tokenData = validateToken(uiToken);
+      if (tokenData) return res.json({ user: { username: tokenData.username } });
     }
     return res.status(401).json({ message: "Not authenticated" });
   });

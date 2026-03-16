@@ -3,6 +3,7 @@ import session from "express-session";
 import MemoryStore from "memorystore";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
+import { validateToken } from "./authTokens";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -58,11 +59,7 @@ if (!SESSION_SECRET) {
   console.warn("[auth] WARNING: SESSION_SECRET is not set — using insecure fallback");
 }
 
-const isProduction = process.env.NODE_ENV === "production";
-
-if (isProduction) {
-  app.set("trust proxy", 1);
-}
+app.set("trust proxy", 1);
 
 app.use(
   session({
@@ -71,7 +68,8 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: isProduction,
+      secure: false,
+      sameSite: "lax",
       maxAge: 24 * 60 * 60 * 1000,
     },
     store: new MemoryStoreSession({
@@ -125,6 +123,9 @@ app.use("/api", (req: Request, res: Response, next: NextFunction) => {
   if (req.path.startsWith("/auth/")) return next();
 
   if (req.isAuthenticated()) return next();
+
+  const uiToken = req.headers["x-auth-token"] as string | undefined;
+  if (uiToken && validateToken(uiToken)) return next();
 
   if (API_SECRET_KEY) {
     const authHeader = req.headers["authorization"];

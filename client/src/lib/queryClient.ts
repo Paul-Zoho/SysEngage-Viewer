@@ -1,5 +1,24 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+const AUTH_TOKEN_KEY = "sysengage_auth_token";
+
+export function getStoredToken(): string | null {
+  return sessionStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+export function setStoredToken(token: string): void {
+  sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+export function clearStoredToken(): void {
+  sessionStorage.removeItem(AUTH_TOKEN_KEY);
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getStoredToken();
+  return token ? { "X-Auth-Token": token } : {};
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -14,7 +33,10 @@ export async function apiRequest(
 ): Promise<Response> {
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: {
+      ...(data ? { "Content-Type": "application/json" } : {}),
+      ...authHeaders(),
+    },
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -31,6 +53,7 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
+      headers: authHeaders(),
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
