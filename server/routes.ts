@@ -1,5 +1,6 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { type Server } from "http";
+import passport from "passport";
 import { storage } from "./storage";
 import { insertProjectSchema } from "@shared/schema";
 import { parseLedgerMarkdown, parseJsonLedger } from "./ledgerParser";
@@ -18,6 +19,34 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   const db = getNeonDb();
+
+  app.post("/api/auth/login", (req: Request, res: Response, next: NextFunction) => {
+    passport.authenticate("local", (err: any, user: any, info: any) => {
+      if (err) return next(err);
+      if (!user) {
+        return res.status(401).json({ message: info?.message || "Invalid credentials" });
+      }
+      req.logIn(user, (loginErr: any) => {
+        if (loginErr) return next(loginErr);
+        return res.json({ user: { username: user.username } });
+      });
+    })(req, res, next);
+  });
+
+  app.post("/api/auth/logout", (req: Request, res: Response, next: NextFunction) => {
+    req.logout((err: any) => {
+      if (err) return next(err);
+      res.json({ message: "Logged out" });
+    });
+  });
+
+  app.get("/api/auth/me", (req: Request, res: Response) => {
+    if (req.isAuthenticated()) {
+      const user = req.user as any;
+      return res.json({ user: { username: user.username } });
+    }
+    return res.status(401).json({ message: "Not authenticated" });
+  });
 
   app.get("/api/ledger", async (_req, res) => {
     res.json(await storage.getLedger());

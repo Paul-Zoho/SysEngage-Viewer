@@ -54,8 +54,27 @@ DB and import layer field names aligned to spec v2.2:
 - `client/src/pages/projects.tsx` - Project management page (create, upload, select, delete)
 - `client/src/pages/` - Page components for each view
 
+### Authentication
+Two authentication paths protect the app:
+- **Browser (admin)**: Username/password login at `/login` → HTTP-only session cookie via `express-session` + `passport-local`
+- **External apps**: API key via `Authorization: Bearer <key>` or `X-API-Key: <key>` header
+
+Auth middleware in `server/index.ts` checks (in order):
+1. `/api/auth/*` endpoints → always pass through
+2. `req.isAuthenticated()` → session-based browser auth
+3. Valid API key header → external app auth
+4. Neither set → permissive mode (for development without secrets)
+5. Otherwise → 401
+
+Auth endpoints: `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`
+
 ### Environment
-- **Required Secret**: `NEON_DATABASE_URL` — sole database connection (Neon PostgreSQL)
+- **Required Secrets**:
+  - `NEON_DATABASE_URL` — sole database connection (Neon PostgreSQL)
+  - `API_SECRET_KEY` — API key for external app access
+  - `ADMIN_USERNAME` — admin login username for the Viewer UI
+  - `ADMIN_PASSWORD` — admin login password for the Viewer UI
+  - `SESSION_SECRET` — used to sign session cookies
 - **No longer used**: `DATABASE_URL` (Replit PostgreSQL) — removed in consolidation
 
 ### Multi-Project System
@@ -118,6 +137,7 @@ Each element type has a corresponding Register that tracks all member IDs for co
 15. **Issues** - Issue tracking with severity and status
 16. **Decisions** - Architectural/governance decisions
 17. **Stakeholders** - Stakeholder profiles with domain associations
+18. **Login** - Admin authentication page (username/password, redirects to dashboard on success)
 
 ### Relationship Visualization System
 Three interconnected features for exploring element relationships:
@@ -138,6 +158,9 @@ Key components:
 - `GET /api/ledger/elements/batch?ids=...` - Batch fetch full element data for multiple IDs
 
 ### API Endpoints
+- `POST /api/auth/login` - Admin login (body: `{ username, password }`)
+- `POST /api/auth/logout` - Logout (clears session)
+- `GET /api/auth/me` - Check current session (returns user or 401)
 - `GET /api/projects` - List all projects with summary info
 - `POST /api/projects` - Create new project
 - `DELETE /api/projects/:id` - Delete project

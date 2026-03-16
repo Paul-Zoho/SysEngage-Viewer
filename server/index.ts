@@ -1,4 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import MemoryStore from "memorystore";
+import passport from "passport";
+import { Strategy as LocalStrategy } from "passport-local";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -36,21 +40,87 @@ export function log(message: string, source = "express") {
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
+const MemoryStoreSession = MemoryStore(session);
+
+const SESSION_SECRET = process.env.SESSION_SECRET;
+if (!SESSION_SECRET) {
+  console.warn("[auth] WARNING: SESSION_SECRET is not set — using insecure fallback");
+}
+
+app.use(
+  session({
+    secret: SESSION_SECRET || "dev-fallback-secret-change-me",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: false,
+      maxAge: 24 * 60 * 60 * 1000,
+    },
+    store: new MemoryStoreSession({
+      checkPeriod: 86400000,
+    }),
+  }),
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+
+if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+  console.warn("[auth] WARNING: ADMIN_USERNAME/ADMIN_PASSWORD not set — UI login will not work");
+}
+
+passport.use(
+  new LocalStrategy((username: string, password: string, done: any) => {
+    if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
+      return done(null, false, { message: "Admin credentials not configured" });
+    }
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+      return done(null, { id: "admin", username });
+    }
+    return done(null, false, { message: "Invalid username or password" });
+  }),
+);
+
+passport.serializeUser((user: any, done: any) => {
+  done(null, user.id);
+});
+
+passport.deserializeUser((id: string, done: any) => {
+  if (id === "admin") {
+    done(null, { id: "admin", username: ADMIN_USERNAME || "admin" });
+  } else {
+    done(null, false);
+  }
+});
+
 const API_SECRET_KEY = process.env.API_SECRET_KEY;
 if (!API_SECRET_KEY) {
-  console.warn("[auth] WARNING: API_SECRET_KEY is not set — all /api/* endpoints are unprotected");
+  console.warn("[auth] WARNING: API_SECRET_KEY is not set — external API access is unprotected");
 }
 
 app.use("/api", (req: Request, res: Response, next: NextFunction) => {
-  if (!API_SECRET_KEY) return next();
-  const authHeader = req.headers["authorization"];
-  const apiKeyHeader = req.headers["x-api-key"];
-  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  const providedKey = bearerToken || apiKeyHeader;
-  if (!providedKey || providedKey !== API_SECRET_KEY) {
-    return res.status(401).json({ message: "Unauthorized: valid API key required" });
+  if (req.path.startsWith("/auth/")) return next();
+
+  if (req.isAuthenticated()) return next();
+
+  if (API_SECRET_KEY) {
+    const authHeader = req.headers["authorization"];
+    const apiKeyHeader = req.headers["x-api-key"];
+    const bearerToken =
+      typeof authHeader === "string" && authHeader.startsWith("Bearer ")
+        ? authHeader.slice(7)
+        : null;
+    const providedKey = bearerToken || apiKeyHeader;
+    if (providedKey && providedKey === API_SECRET_KEY) return next();
   }
-  next();
+
+  if (!API_SECRET_KEY && !ADMIN_USERNAME) return next();
+
+  return res.status(401).json({ message: "Unauthorized" });
 });
 
 app.use((req, res, next) => {
