@@ -1,0 +1,444 @@
+# SysEngage Ledger Viewer — External App Integration Guide
+
+This guide is for developers building apps that create, amend, or read canonical
+ledger data that is then visualised in the SysEngage Ledger Viewer.
+
+---
+
+## Base URL
+
+All endpoints are relative to the deployed instance root, e.g.:
+
+```
+https://<your-replit-domain>.replit.dev
+```
+
+There is no authentication layer at present — all endpoints are open. Add API
+key or token gating at the reverse-proxy or middleware level before exposing
+this to the internet.
+
+---
+
+## External App Workflow
+
+The typical lifecycle for an external app submitting ledger data:
+
+```
+1.  POST  /api/projects/ensure          ← resolve or create the project
+2.  GET   /api/projects/{id}/ledger     ← read the current ledger (if amending)
+3.  POST  /api/projects/{id}/ledger     ← submit the new / updated ledger
+```
+
+Steps 2 and 3 may be repeated many times. Step 1 is idempotent — safe to call
+every time the external app starts.
+
+---
+
+## Project Management
+
+### Resolve or create a project by name
+
+```
+POST /api/projects/ensure
+Content-Type: application/json
+
+{
+  "name": "my-system",
+  "description": "Optional description"
+}
+```
+
+Finds an existing project with a matching name (case-insensitive). If none
+exists a new project is created.
+
+**Response 200** — project already existed:
+```json
+{
+  "id": "proj_8",
+  "name": "my-system",
+  "description": "Optional description",
+  "created_utc": "2026-03-04T07:42:46.271Z",
+  "created": false
+}
+```
+
+**Response 201** — new project was created:
+```json
+{
+  "id": "proj_19",
+  "name": "my-system",
+  "created_utc": "2026-03-16T08:01:35.453Z",
+  "created": true
+}
+```
+
+The `id` field is the project identifier used in all subsequent calls.
+
+---
+
+### Get a project by ID
+
+```
+GET /api/projects/{id}
+```
+
+Returns project metadata without the ledger payload. Use this to confirm a
+project ID is valid before making further requests.
+
+**Response 200:**
+```json
+{
+  "id": "proj_8",
+  "name": "my-system",
+  "description": "...",
+  "created_utc": "2026-03-04T07:42:46.271Z"
+}
+```
+
+**Response 404** — project does not exist.
+
+---
+
+### List all projects
+
+```
+GET /api/projects
+```
+
+Returns a summary of every project — useful for discovery and project-picker UIs.
+
+**Response 200:**
+```json
+[
+  {
+    "id": "proj_8",
+    "name": "my-system",
+    "elementCount": 142,
+    "hasLedger": true,
+    "created_utc": "2026-03-04T07:42:46.271Z"
+  }
+]
+```
+
+---
+
+### Create a project (explicit)
+
+```
+POST /api/projects
+Content-Type: application/json
+
+{
+  "name": "my-system",
+  "description": "optional"
+}
+```
+
+Always creates a new project — does not deduplicate by name. Prefer
+`POST /api/projects/ensure` when the name is your stable identifier.
+
+**Response 201** — the created project object.
+
+---
+
+### Delete a project
+
+```
+DELETE /api/projects/{id}
+```
+
+Permanently deletes the project and all its data. The last remaining project
+cannot be deleted.
+
+**Response 200:** `{ "success": true }`
+**Response 400** — cannot delete the last project.
+
+---
+
+## Ledger Retrieval
+
+### Get a project's full ledger
+
+```
+GET /api/projects/{id}/ledger
+```
+
+Returns the complete canonical ledger JSON for the specified project. This is
+the payload an external app should read when it wants to amend existing content
+before re-submitting.
+
+**Response 200** — the full `CanonicalLedger` JSON object (can be large).
+**Response 404** — project not found, or project exists but has no ledger yet.
+
+---
+
+### Get the active project's ledger
+
+```
+GET /api/ledger
+```
+
+Convenience shorthand — returns the ledger for whichever project is currently
+selected as "active" in the viewer UI. Useful for quick reads; use
+`GET /api/projects/{id}/ledger` when you need a specific project.
+
+---
+
+## Ledger Submission
+
+### Submit or update a ledger
+
+```
+POST /api/projects/{id}/ledger?mode=replace&stepLabel=MyStep
+```
+
+| Query param | Values | Default | Description |
+|-------------|--------|---------|-------------|
+| `mode` | `replace` \| `append` | `replace` | How the new data relates to existing data |
+| `stepLabel` | any string | `"Unnamed Step"` | Human-readable label for the step (recorded as a baseline in append mode) |
+
+#### Replace mode
+
+Completely replaces the project's existing ledger with the submitted content.
+All existing elements are deleted and replaced by the new set. Use this for
+initial loads or full re-runs.
+
+#### Append mode
+
+Merges new elements into the existing ledger. Elements whose ID already exists
+in the project are silently skipped (dedup by canonical element ID). Useful for
+multi-step pipelines where each step adds a subset of elements.
+
+Each append call creates a `LedgerStep` baseline entry recording the step name
+and timestamp, visible in the Viewer's Baselines page.
+
+---
+
+#### Request body — JSON format
+
+Send `Content-Type: application/json` with the canonical ledger JSON:
+
+```json
+{
+  "ledger_id": "LD-my-system-001",
+  "schema_id": "sysengage.ledger.instance.v2_2",
+  "sources": [...],
+  "requirements": [...],
+  "findings": [...],
+  "gaps": [...],
+  "risks": [...],
+  "traces": [...],
+  "coverage_items": [...],
+  "zachman_cells": [...],
+  ...
+}
+```
+
+All array fields are optional — omit any collection that has no content in this
+submission.
+
+---
+
+#### Request body — Markdown format
+
+Send `Content-Type: text/plain` (or omit the header) with the ledger as a
+markdown document conforming to the SysEngage ledger markdown spec:
+
+```
+POST /api/projects/proj_8/ledger?mode=append&stepLabel=AnalysisRound2
+Content-Type: text/plain
+
+# Ledger: my-system
+...
+```
+
+Alternatively, wrap the markdown in JSON:
+```json
+{ "content": "# Ledger: my-system\n..." }
+```
+
+---
+
+#### Response — replace mode
+
+```json
+{
+  "success": true,
+  "mode": "replace",
+  "elementCount": 87,
+  "warnings": [],
+  "ledgerId": "LD-my-system-001",
+  "neonImported": true
+}
+```
+
+#### Response — append mode
+
+```json
+{
+  "success": true,
+  "mode": "append",
+  "newElements": 12,
+  "baselineId": "BL-2026-03-16-0801",
+  "counts": {
+    "requirements": 5,
+    "findings": 4,
+    "coverage_items": 3
+  },
+  "warnings": [],
+  "ledgerId": "LD-my-system-001"
+}
+```
+
+`newElements` is the count of elements that were not already present.
+`baselineId` is the ID of the `LedgerStep` baseline created for this step.
+
+---
+
+## Active Project
+
+The Viewer UI has a concept of an "active project" — the one shown when you
+load the dashboard without specifying a project ID.
+
+```
+GET  /api/projects/active         → { "projectId": "proj_8" }
+PUT  /api/projects/active         body: { "projectId": "proj_8" }
+```
+
+External apps do not need to interact with these endpoints unless they want to
+switch what the viewer displays by default.
+
+---
+
+## Read-Only Ledger Endpoints (Active Project)
+
+All of the following read from the **active project**. They are used by the
+Viewer UI and are available for external consumers that want element-level
+access without downloading the full ledger blob.
+
+| Endpoint | Returns |
+|----------|---------|
+| `GET /api/ledger/stats` | Counts per element type for the active project |
+| `GET /api/ledger/sources` | All Source elements |
+| `GET /api/ledger/requirements` | All Requirement elements |
+| `GET /api/ledger/findings` | All Finding elements |
+| `GET /api/ledger/gaps` | All Gap elements |
+| `GET /api/ledger/risks` | All Risk elements |
+| `GET /api/ledger/issues` | All Issue elements |
+| `GET /api/ledger/traces` | All Trace elements |
+| `GET /api/ledger/decisions` | All Decision elements |
+| `GET /api/ledger/domains` | All Domain elements |
+| `GET /api/ledger/coverage` | All CoverageItem elements |
+| `GET /api/ledger/rules` | All Rule elements |
+| `GET /api/ledger/questions` | All Question elements |
+| `GET /api/ledger/assumptions` | All Assumption elements |
+| `GET /api/ledger/constraints` | All Constraint elements |
+| `GET /api/ledger/stakeholders` | All Stakeholder elements |
+| `GET /api/ledger/segments` | All Segment elements |
+| `GET /api/ledger/baselines` | All Baseline / LedgerStep entries |
+| `GET /api/ledger/registers` | All Register elements |
+| `GET /api/ledger/relationships` | Full relationship graph (nodes + edges) |
+| `GET /api/ledger/zachman-grid` | 6×6 Zachman coverage grid for active project |
+| `GET /api/ledger/{projectId}/zachman-grid` | 6×6 Zachman coverage grid for a specific project |
+
+---
+
+## Single Element Lookup
+
+```
+GET /api/ledger/element/{elementId}
+```
+
+Returns a single element by its canonical ID from the active project, along
+with its type.
+
+**Response 200:**
+```json
+{
+  "element": {
+    "coverage_id": "COV-ROW1-WHAT",
+    "coverage_type": "Cell",
+    "target_ref": "ZC-R1-C-What",
+    "coverage_state": "Covered",
+    "confidence": 0.95
+  },
+  "type": "CoverageItem"
+}
+```
+
+**Response 404** — element not found.
+
+---
+
+## Batch Element Lookup
+
+```
+GET /api/ledger/elements/batch?ids=COV-ROW1-WHAT,ZC-R1-C-What,REQ-001
+```
+
+Returns multiple elements in a single call. IDs that do not exist are silently
+omitted from the response.
+
+**Response 200:**
+```json
+{
+  "elements": {
+    "COV-ROW1-WHAT": { "element": { ... }, "type": "CoverageItem" },
+    "ZC-R1-C-What":  { "element": { ... }, "type": "ZachmanCell" },
+    "REQ-001":       { "element": { ... }, "type": "Requirement" }
+  }
+}
+```
+
+---
+
+## Utility
+
+### GitHub Actions template
+
+```
+GET /api/actions-template
+```
+
+Downloads a pre-built GitHub Actions workflow YAML (`ledger-upload.yml`) that
+demonstrates how to POST a ledger file to this API from a CI/CD pipeline.
+
+### Neon DB connection status
+
+```
+GET /api/neon/status
+```
+
+Returns `{ "connected": true, "hasProjectData": true, "activeProjectId": "proj_8" }`.
+Useful for health checks.
+
+---
+
+## Ledger Format Notes
+
+- The canonical ledger is defined by the **SysEngage Canonical Ledger Spec v2.2**.
+- All element IDs within a ledger must be unique strings in the format
+  `TYPE-identifier` (e.g. `REQ-001`, `ZC-R1-C-What`, `COV-ROW1-WHAT`).
+- In append mode, the dedup key is the element's canonical ID field (e.g.
+  `requirement_id`, `coverage_id`, `zachman_cell_id`). If an element with that
+  ID is already present in the project, the incoming element is skipped.
+- Zachman cell IDs follow the canonical form `ZC-R{row}-C-{column}` where row
+  is 1–6 and column is one of: `What`, `How`, `Where`, `Who`, `When`, `Why`.
+
+---
+
+## Error Responses
+
+All error responses use this shape:
+
+```json
+{ "message": "Human-readable error description" }
+```
+
+Common status codes:
+
+| Code | Meaning |
+|------|---------|
+| 400 | Bad request — missing or invalid input |
+| 404 | Project or element not found |
+| 500 | Server-side error (check the `message` field for details) |

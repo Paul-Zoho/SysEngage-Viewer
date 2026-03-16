@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "O0C493R2Mhnp4u3CNGBwl"
+uri = "file://docs/external-api-guide.md"
+type = "text"
+title = "SysEngage Ledger Viewer — External App Integration Guide"
