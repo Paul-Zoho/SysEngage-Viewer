@@ -13,23 +13,137 @@ All endpoints are relative to the deployed instance root, e.g.:
 https://<your-replit-domain>.replit.dev
 ```
 
-All `/api/*` endpoints are protected by an API key. Every request must include
-the key in one of these two header forms:
+---
+
+## Authentication
+
+Every request to any `/api/*` endpoint must carry a valid API key. Requests
+without a key, or with an incorrect key, are rejected immediately with
+`401 Unauthorized` — the request never reaches the application logic.
+
+### How to send the key
+
+Include the key in one of these two request headers (both are equivalent):
 
 ```
 Authorization: Bearer <your-api-key>
 ```
+
 or
+
 ```
 X-API-Key: <your-api-key>
 ```
 
-If the key is missing or incorrect the server returns `401 Unauthorized`.
+### Where the key lives
 
-The key value is stored in the `API_SECRET_KEY` environment secret on the
-server. External apps must be given the same value and include it in every
-request. If `API_SECRET_KEY` is not configured on the server all endpoints
-remain open and a warning is printed to the server log on startup.
+The key is stored as a secret called `API_SECRET_KEY` in the SysEngage server's
+environment. Only the server reads this value — it is never returned by any API
+endpoint, never committed to source code, and never visible in logs.
+
+### How to configure an external app
+
+The key value itself must be manually copied from whoever manages the SysEngage
+deployment and then stored securely in each external app that needs API access.
+Where you store it depends on how the external app is built:
+
+| External app type | Where to store the key |
+|-------------------|------------------------|
+| Another Replit app | Replit Secrets panel (`API_SECRET_KEY` or any name you choose) |
+| GitHub Actions pipeline | Repository → Settings → Secrets and variables → Actions |
+| Python / Node.js script | `.env` file loaded via `python-dotenv` / `dotenv` package |
+| Docker container | Environment variable passed via `--env` or `docker-compose.yml` |
+| Any other service | That service's own secrets / environment variable system |
+
+The key never goes in source code or config files that are committed to version
+control.
+
+### Example requests
+
+**curl:**
+```bash
+curl -X POST https://<domain>.replit.dev/api/projects/ensure \
+  -H "Authorization: Bearer $API_SECRET_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "my-system"}'
+```
+
+**Python (requests library):**
+```python
+import os, requests
+
+API_KEY = os.environ["API_SECRET_KEY"]
+BASE_URL = "https://<domain>.replit.dev"
+
+headers = {"Authorization": f"Bearer {API_KEY}"}
+
+# Resolve project
+resp = requests.post(f"{BASE_URL}/api/projects/ensure",
+                     headers=headers,
+                     json={"name": "my-system"})
+project = resp.json()
+project_id = project["id"]
+
+# Fetch ledger
+ledger = requests.get(f"{BASE_URL}/api/projects/{project_id}/ledger",
+                      headers=headers).json()
+```
+
+**Node.js / TypeScript:**
+```typescript
+const API_KEY = process.env.API_SECRET_KEY!;
+const BASE_URL = "https://<domain>.replit.dev";
+
+const headers = {
+  "Authorization": `Bearer ${API_KEY}`,
+  "Content-Type": "application/json",
+};
+
+// Resolve project
+const proj = await fetch(`${BASE_URL}/api/projects/ensure`, {
+  method: "POST",
+  headers,
+  body: JSON.stringify({ name: "my-system" }),
+}).then(r => r.json());
+
+// Fetch ledger
+const ledger = await fetch(`${BASE_URL}/api/projects/${proj.id}/ledger`, {
+  headers,
+}).then(r => r.json());
+```
+
+**GitHub Actions:**
+```yaml
+- name: Submit ledger
+  env:
+    API_SECRET_KEY: ${{ secrets.SYSENGAGE_API_KEY }}
+  run: |
+    curl -X POST https://<domain>.replit.dev/api/projects/proj_8/ledger \
+      -H "Authorization: Bearer $API_SECRET_KEY" \
+      -H "Content-Type: application/json" \
+      --data-binary @ledger.json
+```
+
+### Authentication failure response
+
+Any request with a missing or incorrect key returns:
+
+```
+HTTP 401 Unauthorized
+```
+```json
+{ "message": "Unauthorized: valid API key required" }
+```
+
+### Rotating the key
+
+To change the key (e.g. if it is suspected to be compromised):
+
+1. Generate a new random string (32+ characters recommended)
+2. Update `API_SECRET_KEY` in the SysEngage server's Replit Secrets
+3. Restart the SysEngage server so it picks up the new value
+4. Update the key in every external app that calls the API
+5. The old key stops working immediately after the restart
 
 ---
 
@@ -453,6 +567,7 @@ Common status codes:
 
 | Code | Meaning |
 |------|---------|
+| 401 | Missing or incorrect API key |
 | 400 | Bad request — missing or invalid input |
 | 404 | Project or element not found |
 | 500 | Server-side error (check the `message` field for details) |
