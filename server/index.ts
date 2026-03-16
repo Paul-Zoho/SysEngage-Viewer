@@ -8,6 +8,17 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { storage } from "./storage";
 
+interface SessionUser {
+  id: string;
+  username: string;
+}
+
+declare global {
+  namespace Express {
+    interface User extends SessionUser {}
+  }
+}
+
 const app = express();
 const httpServer = createServer(app);
 
@@ -47,6 +58,12 @@ if (!SESSION_SECRET) {
   console.warn("[auth] WARNING: SESSION_SECRET is not set — using insecure fallback");
 }
 
+const isProduction = process.env.NODE_ENV === "production";
+
+if (isProduction) {
+  app.set("trust proxy", 1);
+}
+
 app.use(
   session({
     secret: SESSION_SECRET || "dev-fallback-secret-change-me",
@@ -54,7 +71,7 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: false,
+      secure: isProduction,
       maxAge: 24 * 60 * 60 * 1000,
     },
     store: new MemoryStoreSession({
@@ -74,24 +91,26 @@ if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
 }
 
 passport.use(
-  new LocalStrategy((username: string, password: string, done: any) => {
+  new LocalStrategy((username: string, password: string, done) => {
     if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
       return done(null, false, { message: "Admin credentials not configured" });
     }
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-      return done(null, { id: "admin", username });
+      const user: SessionUser = { id: "admin", username };
+      return done(null, user);
     }
     return done(null, false, { message: "Invalid username or password" });
   }),
 );
 
-passport.serializeUser((user: any, done: any) => {
+passport.serializeUser((user: Express.User, done) => {
   done(null, user.id);
 });
 
-passport.deserializeUser((id: string, done: any) => {
+passport.deserializeUser((id: string, done) => {
   if (id === "admin") {
-    done(null, { id: "admin", username: ADMIN_USERNAME || "admin" });
+    const user: SessionUser = { id: "admin", username: ADMIN_USERNAME || "admin" };
+    done(null, user);
   } else {
     done(null, false);
   }

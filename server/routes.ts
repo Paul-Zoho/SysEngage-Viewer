@@ -21,12 +21,12 @@ export async function registerRoutes(
   const db = getNeonDb();
 
   app.post("/api/auth/login", (req: Request, res: Response, next: NextFunction) => {
-    passport.authenticate("local", (err: any, user: any, info: any) => {
+    passport.authenticate("local", (err: Error | null, user: Express.User | false, info: { message: string } | undefined) => {
       if (err) return next(err);
       if (!user) {
         return res.status(401).json({ message: info?.message || "Invalid credentials" });
       }
-      req.logIn(user, (loginErr: any) => {
+      req.logIn(user, (loginErr: Error | null) => {
         if (loginErr) return next(loginErr);
         return res.json({ user: { username: user.username } });
       });
@@ -34,16 +34,15 @@ export async function registerRoutes(
   });
 
   app.post("/api/auth/logout", (req: Request, res: Response, next: NextFunction) => {
-    req.logout((err: any) => {
+    req.logout((err: Error | null) => {
       if (err) return next(err);
       res.json({ message: "Logged out" });
     });
   });
 
   app.get("/api/auth/me", (req: Request, res: Response) => {
-    if (req.isAuthenticated()) {
-      const user = req.user as any;
-      return res.json({ user: { username: user.username } });
+    if (req.isAuthenticated() && req.user) {
+      return res.json({ user: { username: req.user.username } });
     }
     return res.status(401).json({ message: "Not authenticated" });
   });
