@@ -230,6 +230,37 @@ export async function registerRoutes(
     res.status(201).json(project);
   });
 
+  app.post("/api/projects/ensure", async (req, res) => {
+    const { name, description } = req.body;
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return res.status(400).json({ message: "name is required" });
+    }
+    const { project, created } = await storage.ensureProject(name.trim(), description);
+    const { ledger: _ledger, ...projectMeta } = project;
+    res.status(created ? 201 : 200).json({ ...projectMeta, created });
+  });
+
+  app.get("/api/projects/:id", async (req, res) => {
+    const project = await storage.getProject(req.params.id);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+    const { ledger: _ledger, ...projectMeta } = project;
+    res.json(projectMeta);
+  });
+
+  app.get("/api/projects/:id/ledger", async (req, res) => {
+    const project = await storage.getProject(req.params.id);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+    const ledger = await storage.getLedgerForProject(req.params.id);
+    if (!ledger) {
+      return res.status(404).json({ message: "No ledger found for this project" });
+    }
+    res.json(ledger);
+  });
+
   app.delete("/api/projects/:id", async (req, res) => {
     const projectsList = await storage.getProjects();
     if (projectsList.length <= 1) {

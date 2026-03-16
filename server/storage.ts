@@ -12,6 +12,7 @@ export interface IStorage {
   getLedgerStats(): Promise<LedgerStats>;
   getProjects(): Promise<ProjectSummary[]>;
   getProject(id: string): Promise<Project | undefined>;
+  ensureProject(name: string, description?: string): Promise<{ project: Project; created: boolean }>;
   createProject(name: string, description?: string): Promise<Project>;
   deleteProject(id: string): Promise<boolean>;
   setProjectLedger(id: string, ledger: CanonicalLedger): Promise<boolean>;
@@ -208,6 +209,26 @@ export class NeonProjectStorage implements IStorage {
       created_utc: row.createdUtc,
       ledger: (row.ledger as CanonicalLedger) ?? null,
     };
+  }
+
+  async ensureProject(name: string, description?: string): Promise<{ project: Project; created: boolean }> {
+    const all = await this.db.select().from(nProjects);
+    const nameLower = name.trim().toLowerCase();
+    const existing = all.find(r => r.name.trim().toLowerCase() === nameLower);
+    if (existing) {
+      return {
+        project: {
+          id: existing.projectId,
+          name: existing.name,
+          description: existing.description ?? undefined,
+          created_utc: existing.createdUtc,
+          ledger: (existing.ledger as CanonicalLedger) ?? null,
+        },
+        created: false,
+      };
+    }
+    const project = await this.createProject(name, description);
+    return { project, created: true };
   }
 
   async createProject(name: string, description?: string): Promise<Project> {
