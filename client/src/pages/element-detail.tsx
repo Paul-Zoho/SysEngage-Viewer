@@ -183,7 +183,7 @@ function RelatedElementRow({ relatedId, edge, batchData, nodeMap, direction }: {
   nodeMap: Map<string, RelNode>;
   direction: "outgoing" | "incoming";
 }) {
-  const batchEl = batchData?.elements[relatedId];
+  const batchEl = batchData?.elements?.[relatedId];
   const node = nodeMap.get(relatedId);
   const element = batchEl?.element;
   const type = batchEl?.type || node?.type || "Unknown";
@@ -360,7 +360,7 @@ export default function ElementDetail() {
       const q = searchQuery.toLowerCase();
       edges = edges.filter(e => {
         const node = nodeMap.get(e.to);
-        const batch = batchData?.elements[e.to];
+        const batch = batchData?.elements?.[e.to];
         const title = batch?.element?.title || batch?.element?.name || batch?.element?.statement || batch?.element?.description || node?.title || "";
         return e.to.toLowerCase().includes(q) || title.toLowerCase().includes(q) || (batch?.type || "").toLowerCase().includes(q);
       });
@@ -375,7 +375,7 @@ export default function ElementDetail() {
       const q = searchQuery.toLowerCase();
       edges = edges.filter(e => {
         const node = nodeMap.get(e.from);
-        const batch = batchData?.elements[e.from];
+        const batch = batchData?.elements?.[e.from];
         const title = batch?.element?.title || batch?.element?.name || batch?.element?.statement || batch?.element?.description || node?.title || "";
         return e.from.toLowerCase().includes(q) || title.toLowerCase().includes(q) || (batch?.type || "").toLowerCase().includes(q);
       });

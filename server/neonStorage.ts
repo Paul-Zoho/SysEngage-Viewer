@@ -1,4 +1,4 @@
-import { eq, sql, inArray } from "drizzle-orm";
+import { and, eq, sql, inArray } from "drizzle-orm";
 import * as ns from "../shared/neonSchema";
 
 type NeonDb = ReturnType<typeof import("drizzle-orm/node-postgres").drizzle>;
@@ -88,7 +88,7 @@ export async function getElementsByIds(db: NeonDb, projectId: string, ids: strin
     if (!col) continue;
     const searchIds = Array.from(remaining);
     const rows = await db.select().from(info.table).where(
-      sql`${info.table.projectId} = ${projectId} AND ${col} = ANY(${searchIds})`
+      and(eq(info.table.projectId, projectId), inArray(col, searchIds))
     );
     for (const row of rows) {
       const elId = (row as any)[info.idColumn];
